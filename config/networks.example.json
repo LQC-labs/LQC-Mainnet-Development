@@ -1,0 +1,6 @@
+{
+  "bscMainnet": {"chainId": 56},
+  "bscTestnet": {"chainId": 97},
+  "lqcDevnet": {"chainId": null},
+  "lqcMainnet": {"chainId": null}
+}

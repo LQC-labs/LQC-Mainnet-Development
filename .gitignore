@@ -1,0 +1,25 @@
+.env
+*.pem
+*.key
+.env.*
+**/priv_validator_key.json
+**/node_key.json
+
+# Public example configuration
+!/.env.example
+
+# Local diagnostic logs
+/router-test-error.txt
+
+# Sensitive credentials and wallet backups
+**/secrets.json
+**/credentials.json
+**/wallet-backup.json
+**/keystore.json
+**/mnemonic.txt
+**/seed-phrase.txt
+
+# Private certificates and RPC credentials
+**/*.p12
+**/*.pfx
+**/rpc.private.json
