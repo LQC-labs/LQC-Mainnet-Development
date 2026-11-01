@@ -3,6 +3,16 @@ module github.com/LQC-labs/LQC-Mainnet-Development
 go 1.25.9
 
 require (
+	cosmossdk.io/log/v2 v2.1.0
+	github.com/cometbft/cometbft v0.39.3
+	github.com/cosmos/cosmos-db v1.1.3
+	github.com/cosmos/cosmos-sdk v0.54.3
+	github.com/cosmos/evm v0.7.3
+	github.com/cosmos/evm/evmd v0.0.0-20260903174530-c3ae9067a7ea
+	github.com/spf13/cobra v1.10.2
+)
+
+require (
 	cel.dev/expr v0.25.1 // indirect
 	cloud.google.com/go v0.123.0 // indirect
 	cloud.google.com/go/auth v0.20.0 // indirect
@@ -12,11 +22,11 @@ require (
 	cloud.google.com/go/monitoring v1.27.0 // indirect
 	cloud.google.com/go/storage v1.62.1 // indirect
 	cosmossdk.io/api v1.0.0 // indirect
+	cosmossdk.io/client/v2 v2.0.0-beta.10.0.20260227212600-39d4711b8970 // indirect
 	cosmossdk.io/collections v1.4.0 // indirect
 	cosmossdk.io/core v1.1.0 // indirect
 	cosmossdk.io/depinject v1.2.1 // indirect
 	cosmossdk.io/errors v1.1.0 // indirect
-	cosmossdk.io/log/v2 v2.1.0 // indirect
 	cosmossdk.io/math v1.5.3 // indirect
 	cosmossdk.io/schema v1.1.0 // indirect
 	filippo.io/edwards25519 v1.2.0 // indirect
@@ -55,6 +65,10 @@ require (
 	github.com/bgentry/go-netrc v0.0.0-20140422174119-9fd32a8b3d3d // indirect
 	github.com/bgentry/speakeasy v0.2.0 // indirect
 	github.com/bits-and-blooms/bitset v1.24.4 // indirect
+	github.com/btcsuite/btcd v0.24.2 // indirect
+	github.com/btcsuite/btcd/btcec/v2 v2.3.5 // indirect
+	github.com/btcsuite/btcd/btcutil v1.1.6 // indirect
+	github.com/btcsuite/btcd/chaincfg/chainhash v1.1.0 // indirect
 	github.com/bytedance/gopkg v0.1.4 // indirect
 	github.com/bytedance/sonic v1.15.0 // indirect
 	github.com/bytedance/sonic/loader v0.5.1 // indirect
@@ -70,16 +84,12 @@ require (
 	github.com/cockroachdb/pebble v1.1.5 // indirect
 	github.com/cockroachdb/redact v1.1.8 // indirect
 	github.com/cockroachdb/tokenbucket v0.0.0-20250429170803-42689b6311bb // indirect
-	github.com/cometbft/cometbft v0.39.3
 	github.com/cometbft/cometbft-db v1.0.4 // indirect
 	github.com/consensys/gnark-crypto v0.18.1 // indirect
 	github.com/cosmos/btcutil v1.0.5 // indirect
 	github.com/cosmos/btree v1.0.0 // indirect
-	github.com/cosmos/cosmos-db v1.1.3 // indirect
 	github.com/cosmos/cosmos-proto v1.0.0-beta.5 // indirect
-	github.com/cosmos/cosmos-sdk v0.54.3
 	github.com/cosmos/cosmos-sdk/store/v2 v2.0.0 // indirect
-	github.com/cosmos/evm v0.7.3
 	github.com/cosmos/go-bip39 v1.0.0 // indirect
 	github.com/cosmos/gogogateway v1.2.0 // indirect
 	github.com/cosmos/gogoproto v1.7.2 // indirect
@@ -97,6 +107,8 @@ require (
 	github.com/desertbit/timer v1.0.1 // indirect
 	github.com/dgraph-io/badger/v4 v4.9.1 // indirect
 	github.com/dgraph-io/ristretto/v2 v2.4.0 // indirect
+	github.com/dlclark/regexp2 v1.7.0 // indirect
+	github.com/dop251/goja v0.0.0-20230605162241-28ee0ee714f3 // indirect
 	github.com/dunglas/httpsfv v1.1.0 // indirect
 	github.com/dustin/go-humanize v1.0.1 // indirect
 	github.com/dvsekhvalnov/jose2go v1.8.0 // indirect
@@ -113,6 +125,7 @@ require (
 	github.com/ferranbt/fastssz v0.1.4 // indirect
 	github.com/flynn/noise v1.1.0 // indirect
 	github.com/fsnotify/fsnotify v1.9.0 // indirect
+	github.com/gammazero/deque v1.2.0 // indirect
 	github.com/getsentry/sentry-go v0.46.0 // indirect
 	github.com/go-jose/go-jose/v4 v4.1.4 // indirect
 	github.com/go-kit/kit v0.13.0 // indirect
@@ -121,6 +134,7 @@ require (
 	github.com/go-logr/logr v1.4.3 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/go-ole/go-ole v1.3.0 // indirect
+	github.com/go-sourcemap/sourcemap v2.1.3+incompatible // indirect
 	github.com/go-viper/mapstructure/v2 v2.5.0 // indirect
 	github.com/godbus/dbus v0.0.0-20190726142602-4481cbc300e2 // indirect
 	github.com/gofrs/flock v0.12.1 // indirect
@@ -132,6 +146,7 @@ require (
 	github.com/google/flatbuffers v25.2.10+incompatible // indirect
 	github.com/google/go-cmp v0.7.0 // indirect
 	github.com/google/orderedcode v0.0.1 // indirect
+	github.com/google/pprof v0.0.0-20250403155104-27863c87afa6 // indirect
 	github.com/google/s2a-go v0.1.9 // indirect
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/googleapis/enterprise-certificate-proxy v0.3.14 // indirect
@@ -258,7 +273,6 @@ require (
 	github.com/spaolacci/murmur3 v1.1.0 // indirect
 	github.com/spf13/afero v1.15.0 // indirect
 	github.com/spf13/cast v1.10.0 // indirect
-	github.com/spf13/cobra v1.10.2 // indirect
 	github.com/spf13/pflag v1.0.10 // indirect
 	github.com/spf13/viper v1.21.0 // indirect
 	github.com/spiffe/go-spiffe/v2 v2.6.0 // indirect
@@ -275,6 +289,7 @@ require (
 	github.com/tklauser/go-sysconf v0.3.16 // indirect
 	github.com/tklauser/numcpus v0.11.0 // indirect
 	github.com/twitchyliquid64/golang-asm v0.15.1 // indirect
+	github.com/tyler-smith/go-bip39 v1.1.0 // indirect
 	github.com/ulikunitz/xz v0.5.15 // indirect
 	github.com/wlynxg/anet v0.0.5 // indirect
 	github.com/yusufpapurcu/wmi v1.2.4 // indirect
