@@ -5,6 +5,7 @@ source_dir="$1"
 manifest="$2"
 evidence="$3"
 mkdir -p "$evidence"
+script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)" || exit 1
 cd "$source_dir" || exit 1
 printf 'command\texit_code\n' > "$evidence/exit-codes.tsv"
 overall=0
@@ -19,7 +20,6 @@ run_logged() {
   if (( rc != 0 || statuses[1] != 0 )); then overall=1; fi
 }
 # Evidence collection never changes source hashes or treats mutations as PASS.
-script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)" || exit 1
 printf 'command\tphase\tsha256\n' > "$evidence/go-sum-hashes.tsv" || exit 1
 first_change=''
 snapshot_sum() {
