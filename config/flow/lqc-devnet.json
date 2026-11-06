@@ -1,0 +1,55 @@
+{
+  "schemaVersion": 1,
+  "profile": "lqc-devnet",
+  "cosmosChainId": "lqc-devnet-test-1",
+  "chainId": 917001,
+  "chainIdHex": "0xdfe09",
+  "bech32Prefix": "lqctest",
+  "baseDenom": "atest",
+  "baseExponent": 0,
+  "displayDenom": "test",
+  "decimals": 18,
+  "rpcUrls": [
+    "http://127.0.0.1:8545"
+  ],
+  "allowedOrigins": [
+    "http://localhost:3000"
+  ],
+  "nativeCurrency": {
+    "name": "LQC Devnet Test",
+    "symbol": "TEST",
+    "decimals": 18
+  },
+  "mainnetChainId": null,
+  "assets": {
+    "native": {
+      "kind": "native",
+      "chainId": 917001,
+      "address": null,
+      "baseDenom": "atest",
+      "displayDenom": "test",
+      "decimals": 18
+    },
+    "flowToken": {
+      "kind": "erc20",
+      "chainId": 917001,
+      "address": null,
+      "decimals": null
+    },
+    "wrappedNative": {
+      "kind": "wrapped-native",
+      "chainId": 917001,
+      "address": null,
+      "decimals": 18
+    }
+  },
+  "source": {
+    "coreCommit": "957889bdb2e5709ce23e71f7c5536936ee187851",
+    "flowRepository": "LQC-labs/LQC-Liquidity-chain",
+    "flowCommit": "8db16368b3e09a94bfd500a17e33e3e9ef62ed51"
+  },
+  "preservedNetworks": {
+    "bscMainnet": 56,
+    "bscTestnet": 97
+  }
+}

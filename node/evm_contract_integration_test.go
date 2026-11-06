@@ -211,7 +211,11 @@ func TestEVMContractRuntimeChild(t *testing.T) {
 	if err = n.Start(ctx); err != nil {
 		t.Fatal(err)
 	}
-	rpc, err := n.StartEVMRPC(ctx, "127.0.0.1:0")
+	opts := RPCBrowserOptions{}
+	if os.Getenv("LQC_RUN_RPC_EXPANSION") == "1" {
+		opts.AllowedOrigins = []string{"http://localhost:3000"}
+	}
+	rpc, err := n.StartEVMRPCWithOptions(ctx, "127.0.0.1:0", opts)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -260,6 +264,9 @@ func TestEVMContractRuntimeChild(t *testing.T) {
 		}
 	}
 	check := func(saved contractEvidence) {
+		if os.Getenv("LQC_RUN_RPC_EXPANSION") == "1" {
+			checkRPCExpansion(t, c, rpc, saved, root, phase)
+		}
 		if code := evmRPCResult(t, c, rpc, "eth_getCode", []interface{}{saved.Address, "latest"}); code != saved.Runtime {
 			t.Fatal("deployed runtime bytecode mismatch")
 		}

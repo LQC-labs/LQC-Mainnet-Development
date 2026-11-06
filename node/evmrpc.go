@@ -37,6 +37,14 @@ import (
 // external endpoint, wallet, websocket, stream or separate EVM indexer is created.
 // Close owns cleanup, including startup failures and parent cancellation.
 func (n *Node) StartEVMRPC(ctx context.Context, address string) (string, error) {
+	return n.StartEVMRPCWithOptions(ctx, address, RPCBrowserOptions{})
+}
+
+// StartEVMRPCWithOptions explicitly permits reviewed local browser Origins.
+func (n *Node) StartEVMRPCWithOptions(ctx context.Context, address string, opts RPCBrowserOptions) (string, error) {
+	if _, err := browserOrigins(opts); err != nil {
+		return "", err
+	}
 	if ctx == nil || ctx.Err() != nil {
 		return "", fmt.Errorf("live RPC context required")
 	}
@@ -76,10 +84,12 @@ func (n *Node) StartEVMRPC(ctx context.Context, address string) (string, error) 
 		return "", fmt.Errorf("persistent EVM mempool required")
 	}
 	b := backend.NewBackend(srvCtx, clientCtx, nil, pool)
+	b.Cfg.JSONRPC.GasCap = rpcGasCap
+	b.Cfg.JSONRPC.EVMTimeout = 2 * time.Second
 	if b.EvmChainID.Uint64() != chainID {
 		return "", fmt.Errorf("RPC backend chain identity mismatch")
 	}
-	rpc, err := openEVMRPC(ctx, address, &evmReadAPI{backend: b})
+	rpc, err := openEVMRPCWithOptions(ctx, address, &evmReadAPI{backend: b, pool: pool}, opts)
 	if err != nil {
 		return "", err
 	}
@@ -108,7 +118,10 @@ func validateEVMRPCAddress(address string) error {
 
 // Every exported method delegates state/height semantics to the pinned backend.
 // Registering this narrow adapter avoids exposing upstream signing/debug APIs.
-type evmReadAPI struct{ backend *backend.Backend }
+type evmReadAPI struct {
+	backend *backend.Backend
+	pool    *evmmempool.Mempool
+}
 
 func (a *evmReadAPI) ChainId(ctx context.Context) (*hexutil.Big, error) {
 	ctx, cancel := context.WithTimeout(ctx, 3*time.Second)
@@ -160,6 +173,13 @@ type evmRPCServer struct {
 }
 
 func openEVMRPC(parent context.Context, address string, api *evmReadAPI) (*evmRPCServer, error) {
+	return openEVMRPCWithOptions(parent, address, api, RPCBrowserOptions{})
+}
+func openEVMRPCWithOptions(parent context.Context, address string, api *evmReadAPI, opts RPCBrowserOptions) (*evmRPCServer, error) {
+	origins, err := browserOrigins(opts)
+	if err != nil {
+		return nil, err
+	}
 	if err := validateEVMRPCAddress(address); err != nil {
 		return nil, err
 	}
@@ -177,21 +197,7 @@ func openEVMRPC(parent context.Context, address string, api *evmReadAPI) (*evmRP
 	}
 	ctx, cancel := context.WithCancel(parent)
 	result := &evmRPCServer{address: listener.Addr().String(), rpc: rpc, cancel: cancel, done: make(chan struct{})}
-	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		host, _, e := net.SplitHostPort(r.Host)
-		if e != nil {
-			host = r.Host
-		}
-		if (host != "127.0.0.1" && host != "localhost") || r.Header.Get("Origin") != "" {
-			http.Error(w, "local RPC requests only", http.StatusForbidden)
-			return
-		}
-		if r.Method != http.MethodPost || r.URL.Path != "/" {
-			http.Error(w, "POST / required", http.StatusMethodNotAllowed)
-			return
-		}
-		rpc.ServeHTTP(w, r)
-	})
+	handler := localRPCHandler(rpc, origins)
 	result.http = &http.Server{Handler: handler, ReadHeaderTimeout: 2 * time.Second, ReadTimeout: 5 * time.Second, WriteTimeout: 5 * time.Second, IdleTimeout: 10 * time.Second, MaxHeaderBytes: 8192, BaseContext: func(net.Listener) context.Context { return ctx }}
 	go func() {
 		err := result.http.Serve(listener)

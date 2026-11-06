@@ -1,0 +1,104 @@
+{
+  "schemaVersion": 1,
+  "chainId": 917001,
+  "cosmosChainId": "lqc-devnet-test-1",
+  "status": "unconfigured",
+  "contracts": {
+    "quoteRouter": {
+      "chainId": 917001,
+      "contractAddress": null,
+      "transactionHash": null,
+      "runtimeBytecodeSha256": null,
+      "abiVersion": "quoteRouter-subset-v1",
+      "status": "unconfigured"
+    },
+    "executionRouter": {
+      "chainId": 917001,
+      "contractAddress": null,
+      "transactionHash": null,
+      "runtimeBytecodeSha256": null,
+      "abiVersion": "executionRouter-subset-v1",
+      "status": "unconfigured"
+    },
+    "vault": {
+      "chainId": 917001,
+      "contractAddress": null,
+      "transactionHash": null,
+      "runtimeBytecodeSha256": null,
+      "abiVersion": "vault-subset-v1",
+      "status": "unconfigured"
+    },
+    "lending": {
+      "chainId": 917001,
+      "contractAddress": null,
+      "transactionHash": null,
+      "runtimeBytecodeSha256": null,
+      "abiVersion": "lending-subset-v1",
+      "status": "unconfigured"
+    },
+    "futures": {
+      "chainId": 917001,
+      "contractAddress": null,
+      "transactionHash": null,
+      "runtimeBytecodeSha256": null,
+      "abiVersion": "futures-subset-v1",
+      "status": "unconfigured"
+    },
+    "oracle": {
+      "chainId": 917001,
+      "contractAddress": null,
+      "transactionHash": null,
+      "runtimeBytecodeSha256": null,
+      "abiVersion": "oracle-subset-v1",
+      "status": "unconfigured"
+    },
+    "intent": {
+      "chainId": 917001,
+      "contractAddress": null,
+      "transactionHash": null,
+      "runtimeBytecodeSha256": null,
+      "abiVersion": "intent-subset-v1",
+      "status": "unconfigured"
+    },
+    "settlement": {
+      "chainId": 917001,
+      "contractAddress": null,
+      "transactionHash": null,
+      "runtimeBytecodeSha256": null,
+      "abiVersion": "settlement-subset-v1",
+      "status": "unconfigured"
+    },
+    "staking": {
+      "chainId": 917001,
+      "contractAddress": null,
+      "transactionHash": null,
+      "runtimeBytecodeSha256": null,
+      "abiVersion": "staking-subset-v1",
+      "status": "unconfigured"
+    },
+    "wrappedNative": {
+      "chainId": 917001,
+      "contractAddress": null,
+      "transactionHash": null,
+      "runtimeBytecodeSha256": null,
+      "abiVersion": "wrappedNative-subset-v1",
+      "status": "unconfigured"
+    },
+    "flowToken": {
+      "chainId": 917001,
+      "contractAddress": null,
+      "transactionHash": null,
+      "runtimeBytecodeSha256": null,
+      "abiVersion": "flowToken-subset-v1",
+      "status": "unconfigured"
+    },
+    "launchpad": {
+      "chainId": 917001,
+      "contractAddress": null,
+      "transactionHash": null,
+      "runtimeBytecodeSha256": null,
+      "abiVersion": null,
+      "status": "unimplemented"
+    }
+  }
+}

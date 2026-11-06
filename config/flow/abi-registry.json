@@ -1,0 +1,151 @@
+{
+  "schemaVersion": 1,
+  "sourceRepository": "LQC-labs/LQC-Liquidity-chain",
+  "sourceCommit": "8db16368b3e09a94bfd500a17e33e3e9ef62ed51",
+  "interfaces": {
+    "quoteRouter": {
+      "version": "quoteRouter-subset-v1",
+      "format": "ethers-human-readable",
+      "coverage": "subset",
+      "sourcePath": "dex/contracts/router-v2/LQCQuoteRouter.sol",
+      "sourceCommit": "8db16368b3e09a94bfd500a17e33e3e9ef62ed51",
+      "abi": [
+        "function quoteBest(address,address,uint256,bytes[]) view returns ((bytes32 dexId,address adapter,uint256 amountOut,uint32 priority))"
+      ],
+      "abiSha256": "sha256:7d7ef8e60beea64c4ad2e267319c14e9ec0c754ee590b384fc9ff84f188f42a8",
+      "sourceBlobSha": "035d7b9d9cc51ce561a4eba433302565f499b7f4"
+    },
+    "executionRouter": {
+      "version": "executionRouter-subset-v1",
+      "format": "ethers-human-readable",
+      "coverage": "subset",
+      "sourcePath": "dex/contracts/router-v2/LQCExecutionRouter.sol",
+      "sourceCommit": "8db16368b3e09a94bfd500a17e33e3e9ef62ed51",
+      "abi": [
+        "function swapExactInput(bytes32,address,address,uint256,uint256,address,uint256,bytes) returns (uint256)"
+      ],
+      "abiSha256": "sha256:6f63d6813ee1df626df65409a0701953341548d468f53cec68eebd0a5252c7fb",
+      "sourceBlobSha": "11afbaf1d80074c8cab5c69489956c8381036bf3"
+    },
+    "vault": {
+      "version": "vault-subset-v1",
+      "format": "ethers-human-readable",
+      "coverage": "subset",
+      "sourcePath": "dex/contracts/vault/LQCLiquidityVault.sol",
+      "sourceCommit": "8db16368b3e09a94bfd500a17e33e3e9ef62ed51",
+      "abi": [
+        "function totalAssets() view returns (uint256)",
+        "function deposit(uint256,address) returns (uint256)",
+        "function redeem(uint256,address,address) returns (uint256)"
+      ],
+      "abiSha256": "sha256:649916f416f4e0ae5cface299b642af43c3ade27ebfb5d58e945f823f1602f86",
+      "sourceBlobSha": "758c1cb03391636dd5141b5dc508100e43bf999e"
+    },
+    "lending": {
+      "version": "lending-subset-v1",
+      "format": "ethers-human-readable",
+      "coverage": "subset",
+      "sourcePath": "dex/contracts/lending/LQCLendingCore.sol",
+      "sourceCommit": "8db16368b3e09a94bfd500a17e33e3e9ef62ed51",
+      "abi": [
+        "function depositCollateral(bytes32,uint256)",
+        "function supplyLiquidity(bytes32,uint256)",
+        "function borrow(bytes32,uint256,address)",
+        "function repay(bytes32,uint256,address) returns (uint256)"
+      ],
+      "abiSha256": "sha256:73f6b95a636bec4b5f836aa774bac9f9baeb0cffc75d92bd59e7a122769c6594",
+      "sourceBlobSha": "e8a7e812ddef298bc8d6404c39f6251d95af23d8"
+    },
+    "futures": {
+      "version": "futures-subset-v1",
+      "format": "ethers-human-readable",
+      "coverage": "subset",
+      "sourcePath": "dex/contracts/futures/LQCPerpEngine.sol",
+      "sourceCommit": "8db16368b3e09a94bfd500a17e33e3e9ef62ed51",
+      "abi": [
+        "function openPosition(uint256,uint256,uint256,bool)",
+        "function closePosition(uint256)"
+      ],
+      "abiSha256": "sha256:1bf2d207a4a63cf62f6b22d5b1d28200263a5d7145660a7429f2617ca2caa76a",
+      "sourceBlobSha": "c6b3da26aa4a5a22c2ed7d7e58c1be2bddd952ad"
+    },
+    "oracle": {
+      "version": "oracle-subset-v1",
+      "format": "ethers-human-readable",
+      "coverage": "subset",
+      "sourcePath": "dex/contracts/lending/LQCOracleManager.sol",
+      "sourceCommit": "8db16368b3e09a94bfd500a17e33e3e9ef62ed51",
+      "abi": [
+        "function getPrices(address) view returns (uint256 collateralPrice,uint256 debtPrice)"
+      ],
+      "abiSha256": "sha256:56f24587a555719aed8a105cc83f487da7c228f22bfb21d7419896f34f3c8285",
+      "sourceBlobSha": "286545f47bfa7827136a8d29a6492996014e0948"
+    },
+    "intent": {
+      "version": "intent-subset-v1",
+      "format": "ethers-human-readable",
+      "coverage": "subset",
+      "sourcePath": "dex/contracts/intent-v1/LQCIntentHub.sol",
+      "sourceCommit": "8db16368b3e09a94bfd500a17e33e3e9ef62ed51",
+      "abi": [
+        "function paused() view returns (bool)",
+        "function executeIntent(bytes32,address)"
+      ],
+      "abiSha256": "sha256:4b54ae86bea81030662ca198451c3407bb7581e4da2d45728f9fc514a72ab582",
+      "sourceBlobSha": "d2d9b7e7585083a8458b6a8de949ff8ad197a337"
+    },
+    "settlement": {
+      "version": "settlement-subset-v1",
+      "format": "ethers-human-readable",
+      "coverage": "subset",
+      "sourcePath": "dex/contracts/intent-v1/LQCExecutionReceipt.sol",
+      "sourceCommit": "8db16368b3e09a94bfd500a17e33e3e9ef62ed51",
+      "abi": [
+        "function getReceiptHash(bytes32) view returns (bytes32)"
+      ],
+      "abiSha256": "sha256:c59edafe219714bd57e835507595d6b6d96acdbded152dea4c1fef64a7daad8b",
+      "sourceBlobSha": "61e211d75260c1af065392eb4aceb9438953ceb2"
+    },
+    "staking": {
+      "version": "staking-subset-v1",
+      "format": "ethers-human-readable",
+      "coverage": "subset",
+      "sourcePath": "dex/contracts/staking/LQCStakingVault.sol",
+      "sourceCommit": "8db16368b3e09a94bfd500a17e33e3e9ef62ed51",
+      "abi": [
+        "function stake(uint256,address)",
+        "function requestUnstake(uint256)",
+        "function completeUnstake(address) returns (uint256)"
+      ],
+      "abiSha256": "sha256:0fca1bfe37d22173ead860b322417b1ad332a5852215166727b340dbb28465e7",
+      "sourceBlobSha": "0f641e7a38f9ebafcffbade855fdf8bfbdfa9705"
+    },
+    "wrappedNative": {
+      "version": "wrappedNative-subset-v1",
+      "format": "ethers-human-readable",
+      "coverage": "subset",
+      "sourcePath": "dex/contracts/interfaces/IWBNB.sol",
+      "sourceCommit": "8db16368b3e09a94bfd500a17e33e3e9ef62ed51",
+      "abi": [
+        "function deposit() payable",
+        "function withdraw(uint256)"
+      ],
+      "abiSha256": "sha256:900a21f10a98ebe20f01c9edc6f8372400f11122579e9816232fc51dd8f7ca75",
+      "sourceBlobSha": "263b428cb4a42092b8e3c959dbebac410c721d20"
+    },
+    "flowToken": {
+      "version": "flowToken-subset-v1",
+      "format": "ethers-human-readable",
+      "coverage": "subset",
+      "sourcePath": "dex/contracts/interfaces/IERC20.sol",
+      "sourceCommit": "8db16368b3e09a94bfd500a17e33e3e9ef62ed51",
+      "abi": [
+        "function balanceOf(address) view returns (uint256)",
+        "function allowance(address,address) view returns (uint256)",
+        "function approve(address,uint256) returns (bool)"
+      ],
+      "abiSha256": "sha256:eedcd03deaa0159e61a96f997f1033d1c276e8b2e23e0d7a92416eb7bffbb144",
+      "sourceBlobSha": "609bd82f3c5ac21b3ddced51a9aef0091847362c"
+    }
+  }
+}
