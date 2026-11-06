@@ -44,6 +44,12 @@ type App struct {
 // validator keys, listeners, transactions, or token metadata initialization.
 // The caller supplies an isolated home and owns the database until success.
 func New(logger log.Logger, db dbm.DB, home string) (result *App, err error) {
+	return newWithOptions(logger, db, home, nil, nil)
+}
+
+// newWithOptions retains the original New defaults. Only the persistent
+// constructor supplies its bounded proposal-wait option.
+func newWithOptions(logger log.Logger, db dbm.DB, home string, extra options, beforeLoad func(*evmd.EVMD, options) error) (result *App, err error) {
 	profile := chainconfig.TestOnlyDevnetConfig()
 	if err := profile.Validate(); err != nil {
 		return nil, err
@@ -71,6 +77,9 @@ func New(logger log.Logger, db dbm.DB, home string) (result *App, err error) {
 		evmflags.EVMChainID:        profile.Chain.EVMChainID,
 		sdkserver.FlagMinGasPrices: profile.MinimumGasPrice,
 	}
+	for key, value := range extra {
+		opts[key] = value
+	}
 	// Keep all upstream keeper dependencies, object stores, ante/post handlers,
 	// and module execution ordering. Do not use upstream example Genesis data.
 	application := evmd.NewExampleApp(logger, db, false, opts,
@@ -79,6 +88,12 @@ func New(logger log.Logger, db dbm.DB, home string) (result *App, err error) {
 		func(b *baseapp.BaseApp) { b.SetName(Name) },
 	)
 	application.SetVersion(Version)
+	if beforeLoad != nil {
+		if err := beforeLoad(application, opts); err != nil {
+			_ = application.Close()
+			return nil, err
+		}
+	}
 	if err := application.LoadLatestVersion(); err != nil {
 		return nil, fmt.Errorf("load LQC application stores: %w", err)
 	}

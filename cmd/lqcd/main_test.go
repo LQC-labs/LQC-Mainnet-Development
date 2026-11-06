@@ -22,11 +22,18 @@ func TestCLIScope(t *testing.T) {
 			t.Fatal("missing application identity")
 		}
 	}
-	for _, command := range []string{"init", "start", "keys", "genesis"} {
+	for _, command := range []string{"start", "keys"} {
 		root := newRootCommand()
 		root.SetArgs([]string{command})
 		if err := root.Execute(); err == nil {
 			t.Errorf("out-of-scope command %s must not be available", command)
+		}
+	}
+	for _, args := range [][]string{{"init"}, {"init", "--home", t.TempDir(), "--chain-id", "wrong"}, {"genesis", "validate"}} {
+		root := newRootCommand()
+		root.SetArgs(args)
+		if err := root.Execute(); err == nil {
+			t.Errorf("invalid arguments accepted: %v", args)
 		}
 	}
 }

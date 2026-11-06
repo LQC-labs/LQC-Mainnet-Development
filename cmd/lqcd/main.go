@@ -6,16 +6,20 @@ package main
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 
+	"cosmossdk.io/log/v2"
 	"github.com/LQC-labs/LQC-Mainnet-Development/app"
+	"github.com/LQC-labs/LQC-Mainnet-Development/genesis"
+	dbm "github.com/cosmos/cosmos-db"
 	"github.com/spf13/cobra"
 )
 
 func newRootCommand() *cobra.Command {
 	root := &cobra.Command{
 		Use:           "lqcd",
-		Short:         "LQC test Devnet application CLI (Core 2/2-1)",
-		Long:          "LQC Cosmos SDK / Cosmos EVM application CLI. Genesis and node startup are not available in this stage.",
+		Short:         "LQC test Devnet application and Genesis CLI",
+		Long:          "LQC test Devnet CLI. Creates unfunded Genesis drafts without validator keys or node startup.",
 		SilenceUsage:  true,
 		SilenceErrors: true,
 		Args:          cobra.NoArgs,
@@ -30,7 +34,72 @@ func newRootCommand() *cobra.Command {
 			return err
 		},
 	})
+	initCmd := &cobra.Command{
+		Use: "init", Short: "Create a new unfunded test Devnet genesis.json (never overwrite)", Args: cobra.NoArgs,
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			home, _ := cmd.Flags().GetString("home")
+			if home == "" {
+				return fmt.Errorf("explicit --home is required")
+			}
+			chainID, _ := cmd.Flags().GetString("chain-id")
+			if chainID != "lqc-devnet-test-1" {
+				return fmt.Errorf("only lqc-devnet-test-1 is supported")
+			}
+			// Refuse existing Genesis before constructing the application.
+			if _, err := os.Lstat(filepath.Join(home, "config", "genesis.json")); err == nil {
+				return fmt.Errorf("genesis.json already exists")
+			} else if !os.IsNotExist(err) {
+				return err
+			}
+			return withGenesisApp(func(a *app.App) error {
+				path, err := genesis.Init(a, home)
+				if err == nil {
+					_, err = fmt.Fprintln(cmd.OutOrStdout(), path)
+				}
+				return err
+			})
+		},
+	}
+	initCmd.Flags().String("home", "", "Explicit isolated test home")
+	initCmd.Flags().String("chain-id", "lqc-devnet-test-1", "Fixed test Cosmos chain ID")
+	genesisCmd := &cobra.Command{Use: "genesis", Short: "Test Devnet Genesis tools"}
+	genesisCmd.AddCommand(&cobra.Command{
+		Use: "validate <file>", Short: "Validate an unfunded Genesis draft without modifying it", Args: cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			data, err := os.ReadFile(args[0])
+			if err != nil {
+				return err
+			}
+			return withGenesisApp(func(a *app.App) error {
+				if err := genesis.Validate(a, data); err != nil {
+					return err
+				}
+				_, err := fmt.Fprintln(cmd.OutOrStdout(), "LQC test Devnet Genesis draft valid (no validators or funding)")
+				return err
+			})
+		},
+	})
+	root.AddCommand(initCmd, genesisCmd, singleValidatorCommand())
 	return root
+}
+
+func withGenesisApp(run func(*app.App) error) (err error) {
+	home, err := os.MkdirTemp("", "lqc-genesis-app-")
+	if err != nil {
+		return err
+	}
+	db := dbm.NewMemDB()
+	a, err := app.New(log.NewNopLogger(), db, home)
+	if err != nil {
+		_ = db.Close()
+		return err
+	}
+	defer func() {
+		if closeErr := a.Close(); err == nil {
+			err = closeErr
+		}
+	}()
+	return run(a)
 }
 
 func main() {

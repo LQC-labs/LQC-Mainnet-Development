@@ -23,3 +23,57 @@
 **/*.p12
 **/*.pfx
 **/rpc.private.json
+
+# Local validator signing state and runtime identities (never publish).
+**/priv_validator_state.json
+**/node.identity.json
+**/application.identity.json
+
+# Cosmos SDK keyrings and encrypted Ethereum keystore directories.
+**/keyring-*/
+**/keystore/
+
+# Persistent databases and consensus write-ahead logs, at any depth.
+*.db
+*.db/
+*.db-*
+*.sqlite
+*.sqlite3
+*.sqlite-journal
+*.sqlite-wal
+*.sqlite-shm
+*.wal
+**/cs.wal/
+**/consensus.wal/
+
+# Local node homes: root locations and names used by opt-in runtime tests.
+# Keep examples/** and **/testdata/** public Genesis/code fixtures visible.
+/.lqcd/
+/.lqc/
+/.evmd/
+/home/
+/homes/
+/node-home/
+/node-homes/
+/devnet-home/
+/devnet-homes/
+/local-devnet/
+**/lqc-native-evm.*/
+**/lqc-evm-contract.*/
+**/lqc-restart-regression.*/
+**/lqc-evmrpc-integration.*/
+**/lqc-admission-regression.*/
+**/unified.*/
+
+# Execution outputs and local reports; do not ignore .go/.json/.hex fixtures.
+*.log
+*.log.*
+*.stack
+*.test
+/logs/
+/local-evidence/
+/lqcd
+/lqcd.exe
+
+# Machine-specific migration inventories and diagnostics stay local.
+/migration-preparation/
