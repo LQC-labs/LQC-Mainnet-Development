@@ -1,0 +1,11 @@
+{
+  "name": "lqc-live508-verification",
+  "version": "0.0.0",
+  "private": true,
+  "engines": {
+    "node": "22.16.0"
+  },
+  "dependencies": {
+    "ethers": "6.17.0"
+  }
+}

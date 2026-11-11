@@ -1,0 +1,324 @@
+[
+  {
+    "source": "5.08-SINGLE-EXECUTION-PATH-20261111/mock_backend.py",
+    "destination": "lqc_live508/shared/mock_backend.py",
+    "originalSHA256": "56a36878c93b3fc096b613582e378ea2b3016dd4eace9147b97cb1eb10912c05",
+    "integratedSHA256": "4e2648037eb7fc2a61e2d72cd48f618b1235920731a786c7562d8d8460ac4eeb"
+  },
+  {
+    "source": "5.08-SINGLE-EXECUTION-PATH-20261111/approval_gate.py",
+    "destination": "lqc_live508/shared/approval_gate.py",
+    "originalSHA256": "4e55422f7ce88315a8ab15f489772dbbc89c515ec76516c9e4f78f52f3da401d",
+    "integratedSHA256": "d8b1a2773c345f6e34f7c48e4db957584ca1a55997884b72082d63ed90f60f82"
+  },
+  {
+    "source": "5.08-SINGLE-EXECUTION-PATH-20261111/durable_journal.py",
+    "destination": "lqc_live508/shared/durable_journal.py",
+    "originalSHA256": "8f2a67444943dbcdd8bee69b409068ff66f8319f9beb7780c00b1a355fbd4548",
+    "integratedSHA256": "bb5eac3103c86fb48553bd982b773a5e250141c7149487364b5cc1c37b1d134e"
+  },
+  {
+    "source": "5.08-SINGLE-EXECUTION-PATH-20261111/journal_backend.py",
+    "destination": "lqc_live508/shared/journal_backend.py",
+    "originalSHA256": "13bac9f574cad8ec66f0575cf447a5161589e8048598a71fb20b3248216b345f",
+    "integratedSHA256": "af252e01e519f8472734d5727725620504ecb5cd58ac98587382cd4bdd0bf28c"
+  },
+  {
+    "source": "5.08-SINGLE-EXECUTION-PATH-20261111/offline_authority.py",
+    "destination": "lqc_live508/shared/offline_authority.py",
+    "originalSHA256": "026ce001d0b6ae85dca033d9b504ae1e423305199f6bfc7d4a6ff322e77eed60",
+    "integratedSHA256": "dd35854e25849dfa568721d5f36d4129fb007c434ccd7db6accf0f9a49046645"
+  },
+  {
+    "source": "5.08-SINGLE-EXECUTION-PATH-20261111/authority_binding.py",
+    "destination": "lqc_live508/shared/authority_binding.py",
+    "originalSHA256": "ff97cfd922e2a228f6f43126f755d7126989299d8c073ae4fa7d80e852d24849",
+    "integratedSHA256": "8abdb4a1507afd2d9a84be1d836b2430758ce514bf48e6a61a4fa2be7c37f885"
+  },
+  {
+    "source": "5.08-SINGLE-EXECUTION-PATH-20261111/offline_adapters.py",
+    "destination": "lqc_live508/shared/offline_adapters.py",
+    "originalSHA256": "14d875c3ea8d9f394747a19b92fa500bad91108e0e0aeac1cac6695119fd1df0",
+    "integratedSHA256": "ef3702a1967008214415bb28a961748da344411b011ee72dc5416d64b88f5a4f"
+  },
+  {
+    "source": "5.08-LIVE-JOURNAL-COORDINATOR-20261111/live_contracts.py",
+    "destination": "lqc_live508/live_contracts.py",
+    "originalSHA256": "ba2b4f052bdaa2ec251335dd003ca1aaaf87f8c35116568996fcf4ad56f02023",
+    "integratedSHA256": "db8272cb64f5245fbf7c40c150884614936b6a51b6207699b7b0f47aab2f14b7"
+  },
+  {
+    "source": "5.08-LIVE-JOURNAL-COORDINATOR-20261111/live_coordinator.py",
+    "destination": "lqc_live508/live_coordinator.py",
+    "originalSHA256": "44d0c1155ba71fbb6632c42df61419acbcfca193bc1eb9afe33495fbbd20bd2e",
+    "integratedSHA256": "47230e09412114a3ec153356a2c64dfaa51ce80301ae152bc299aa0c07ba3e1d"
+  },
+  {
+    "source": "5.08-LIVE-JOURNAL-COORDINATOR-20261111/live_hash.py",
+    "destination": "lqc_live508/live_hash.py",
+    "originalSHA256": "6945c03a6fe120d319fdadc83ef46b21210631721cc30842d25819e3d4f47be5",
+    "integratedSHA256": "fd6f62113d092f651f34f555c7f3056c69055177428d17e5f7af05f429bce09d"
+  },
+  {
+    "source": "5.08-LIVE-JOURNAL-COORDINATOR-20261111/live_journal.py",
+    "destination": "lqc_live508/live_journal.py",
+    "originalSHA256": "7d26623b8b89cdadd0a2121514a26f26275bfbce2f03b113ef0692fdabb4e4f3",
+    "integratedSHA256": "2dbd8b5ad693243c7bbfa97e7652ac025faef69c1d039965c687f864ec9d4c0b"
+  },
+  {
+    "source": "5.08-LIVE-RPC-GENESIS-20261111/run_binding.py",
+    "destination": "lqc_live508/run_binding.py",
+    "originalSHA256": "e6324e0161c5eaf48f92f0a11156a5eca33e9515853e6ff3f5b6c1bd7155d7c3",
+    "integratedSHA256": "fba1c9af590dad5951541ee8461674b1e339e0a03008df2256a2c55497f176eb"
+  },
+  {
+    "source": "5.08-LIVE-RPC-GENESIS-20261111/live_rpc.py",
+    "destination": "lqc_live508/live_rpc.py",
+    "originalSHA256": "ddc1ebd3f8387076a2d3a278e5c92659f37227b9c6f42984959dc4f29da93e5b",
+    "integratedSHA256": "48130543c7394649558545ab0ad7a17834b4d43f004560b08ec4fa0aa69c7cb2"
+  },
+  {
+    "source": "5.08-LIVE-AUTHORITY-SIGNER-20261111/live_authority_binding.py",
+    "destination": "lqc_live508/live_authority_binding.py",
+    "originalSHA256": "f16fe3579ad009d7b07f0f0e38213382b1cfd3bce46aa962a33f6875c46f8f32",
+    "integratedSHA256": "42e501781bbf1ca27c45b17f9adf4c81b9083cdefe1858f0f16f0d884e1a308d"
+  },
+  {
+    "source": "5.08-LIVE-AUTHORITY-SIGNER-20261111/live_signer.py",
+    "destination": "lqc_live508/live_signer.py",
+    "originalSHA256": "030cc42d4b9738511a97bb0e5e585e136a10c9b6ccc4fe8ebc8af7ae4f347d11",
+    "integratedSHA256": "24b81fc8fc4ad2f165d09b5903bf417b7b1e6760d7414cb1312697f3d46c43c9"
+  },
+  {
+    "source": "5.08-LIVE-SUBMISSION-EVIDENCE-20261111/live_evidence.py",
+    "destination": "lqc_live508/live_evidence.py",
+    "originalSHA256": "e05792889ba8ab4fda89b579b7cbff14e75f31d3653bfe214a17a94b5a52b3bc",
+    "integratedSHA256": "27060042229261d3dc43196f1346c74cd76e36249fe7ce69470d2fa33b8aebb0"
+  },
+  {
+    "source": "5.08-LIVE-SUBMISSION-EVIDENCE-20261111/live_path.py",
+    "destination": "lqc_live508/live_path.py",
+    "originalSHA256": "4b8ef54dd38dbab0ecd5898666fc1a5d70580a4d8ee8986faa297263af043260",
+    "integratedSHA256": "a2a4879230ca1b6acc69e6b916b38ee73280c161ffc886b37a8ec4f550c8e2ac"
+  },
+  {
+    "source": "5.08-LIVE-JOURNAL-COORDINATOR-20261111/legacy.py",
+    "destination": "lqc_live508/journal_reuse.py",
+    "originalSHA256": "9ab260ba0f83e8d667a27ce7612a17367307b9d80c0ac95bfa7019e5908beb5b",
+    "integratedSHA256": "241a26883eab0332dc3a909eee8a70eff20fe7ea4cfb93ac1aeced0c26ad874f"
+  },
+  {
+    "source": "5.08-LIVE-RPC-GENESIS-20261111/reuse.py",
+    "destination": "lqc_live508/rpc_reuse.py",
+    "originalSHA256": "6e5391be704b70b50255a4e43ef381bd3b30e2b9633da7547421f54ca91547be",
+    "integratedSHA256": "a8d7327f3796d7a819fa94916057fe6cb57db81cf1370c39fff4172d52004632"
+  },
+  {
+    "source": "5.08-LIVE-AUTHORITY-SIGNER-20261111/reuse_authority.py",
+    "destination": "lqc_live508/authority_reuse.py",
+    "originalSHA256": "6173d8c7978eef6154f7bf1fb72c336231320b17a385f7624c6309592f38bb79",
+    "integratedSHA256": "6bba34b33117ceb4b0c13434b8016ff1ca20d77abd5bcdeb95276180c7e25029"
+  },
+  {
+    "source": "5.08-LIVE-SUBMISSION-EVIDENCE-20261111/reuse_execution.py",
+    "destination": "lqc_live508/execution_reuse.py",
+    "originalSHA256": "a39c469a8bdf567c12d63cd5ebca5ee026c16eb830adcbbd1be5fb2de87fd2c1",
+    "integratedSHA256": "6711eaeec4ac9e2f8c88983463ace3eae8b936cc723f4806449affd746e2243c"
+  },
+  {
+    "source": "MAIN-12-STAGE7-DEPLOYMENT-HARNESS-20261110/harness/evidence.py",
+    "destination": "lqc_live508/shared/runtime_evidence.py",
+    "originalSHA256": "67c81a96012d88258aef9d4b7c2f3b517bce7c6eaf209ed05332c7a283b5c148",
+    "integratedSHA256": "99051886dda863a867763787eb1134571c3fb4f8aeae939eef15367d6f9dbecf"
+  },
+  {
+    "source": "5.08-LIVE-JOURNAL-COORDINATOR-20261111/test_live_journal.py",
+    "destination": "tests/live508/test_live_journal.py",
+    "originalSHA256": "29a71e744fb5267ec64ac57e63a19cefec6669d5e0cb5e5a734f8db8580d2875",
+    "integratedSHA256": "e8acedafae889b7d0dabb866a2f9019f35ec709b10c80f96fd277303b47d80ef"
+  },
+  {
+    "source": "5.08-LIVE-RPC-GENESIS-20261111/test_live_rpc.py",
+    "destination": "tests/live508/test_live_rpc.py",
+    "originalSHA256": "d860fb0c60b3ec69e835af8f31fd464dd236b4f504695c3300bc898326782bc6",
+    "integratedSHA256": "14fd239491d8881576166b9768733e18cbcb244f37affde11742362913ceca4b"
+  },
+  {
+    "source": "5.08-LIVE-AUTHORITY-SIGNER-20261111/test_live_authority_signer.py",
+    "destination": "tests/live508/test_live_authority_signer.py",
+    "originalSHA256": "56c26f41d3ab6e5fa31782432b68e61b2214952685128796f8b428a14920072c",
+    "integratedSHA256": "f9bf17de59c5cc80bbaf4811afc2ce1cfd11496f31c0b06b35dc970b6ec012d3"
+  },
+  {
+    "source": "5.08-LIVE-SUBMISSION-EVIDENCE-20261111/test_live_execution.py",
+    "destination": "tests/live508/test_live_execution.py",
+    "originalSHA256": "205efb8529b798e3796b88ac7f5a15e01a3daa6cb2f6ccb19a8eb8592f993b9c",
+    "integratedSHA256": "1a133db1f16f34a1fb85a3f57019494bd18ca5d81dde7fdd159d4ddf905b1882"
+  },
+  {
+    "source": "5.08-SINGLE-EXECUTION-PATH-20261111/test_offline_adapters.py",
+    "destination": "tests/live508/test_offline_adapters.py",
+    "originalSHA256": "f77ca99b6b382d30491d812961a196bfcb9c6ca982bd366d87952db0f491bbcb",
+    "integratedSHA256": "c92ac2731a0ad0bdd0733d17e84657097418b6bf49d612296034bcd21be256e5"
+  },
+  {
+    "source": "5.08-PREP06-AUTHORITY-RECOVERY-20261111/test_authority_recovery.py",
+    "destination": "tests/live508/test_authority_recovery.py",
+    "originalSHA256": "1540dd060f7daf2da24b04543c92d164a092b0c2ff1562a47040f3bfae68e611",
+    "integratedSHA256": "bf181e414db8f0cbf54c74cb3fb32f44ba3c74dfb4cb1b972810d4012ee0e200"
+  },
+  {
+    "source": "5.08-PREP06-AUTHORITY-RECOVERY-20261111/MOCK-PROFILE.json",
+    "destination": "tests/live508/fixtures/MOCK-PROFILE.json",
+    "originalSHA256": "ece08890e5bf0acf9dc912e0f887cc1ecddc1cac857f2ce21d35d20a7afa4100",
+    "integratedSHA256": "ece08890e5bf0acf9dc912e0f887cc1ecddc1cac857f2ce21d35d20a7afa4100"
+  },
+  {
+    "source": "5.08-PREP06-AUTHORITY-RECOVERY-20261111/MOCK-ABI-PLAN.json",
+    "destination": "tests/live508/fixtures/MOCK-ABI-PLAN.json",
+    "originalSHA256": "8ffd025c3a2afa3dd1bbc2401bb64a5536b03b3b869527ee320c46e271a56ac3",
+    "integratedSHA256": "8ffd025c3a2afa3dd1bbc2401bb64a5536b03b3b869527ee320c46e271a56ac3"
+  },
+  {
+    "source": "5.08-PREP06-AUTHORITY-RECOVERY-20261111/MOCK-GENESIS.json",
+    "destination": "tests/live508/fixtures/MOCK-GENESIS.json",
+    "originalSHA256": "4cea70b94c6cf791334a4abf289e1ea1e01f3dcbf52e2ba15a774dccc4615201",
+    "integratedSHA256": "4cea70b94c6cf791334a4abf289e1ea1e01f3dcbf52e2ba15a774dccc4615201"
+  },
+  {
+    "source": "5.08-PREP06-AUTHORITY-RECOVERY-20261111/RFC8032-PUBLIC-VECTORS.json",
+    "destination": "tests/live508/fixtures/RFC8032-PUBLIC-VECTORS.json",
+    "originalSHA256": "a6a5e1cb39ade940c4727c89f6db040de356be5c448bc80cb5eb86f5eba2fd6e",
+    "integratedSHA256": "a6a5e1cb39ade940c4727c89f6db040de356be5c448bc80cb5eb86f5eba2fd6e"
+  },
+  {
+    "source": "5.08-PREP06-AUTHORITY-RECOVERY-20261111/TRUST-CONFIG-UNKNOWN.json",
+    "destination": "tests/live508/fixtures/TRUST-CONFIG-UNKNOWN.json",
+    "originalSHA256": "26d2a3f59971d00f5c3ad74e8dcca3aa39b40683c511b6f491037fe09e9ea5f0",
+    "integratedSHA256": "26d2a3f59971d00f5c3ad74e8dcca3aa39b40683c511b6f491037fe09e9ea5f0"
+  },
+  {
+    "source": "5.08-PREP06-AUTHORITY-RECOVERY-20261111/REAL-INPUTS-UNKNOWN.json",
+    "destination": "tests/live508/fixtures/REAL-INPUTS-UNKNOWN.json",
+    "originalSHA256": "0e1fd97fb263e1e873f9a492712216398259aa2cf1e8feca86fed7ff192c5432",
+    "integratedSHA256": "0e1fd97fb263e1e873f9a492712216398259aa2cf1e8feca86fed7ff192c5432"
+  },
+  {
+    "source": "5.08-PREP06-AUTHORITY-RECOVERY-20261111/TRANSACTION-ALLOWLIST-CANDIDATE.json",
+    "destination": "tests/live508/fixtures/TRANSACTION-ALLOWLIST-CANDIDATE.json",
+    "originalSHA256": "45a63b3759fe1f960dcc828ccf2b781f79c4de43d93f074e8e932fafb9b9aa8d",
+    "integratedSHA256": "45a63b3759fe1f960dcc828ccf2b781f79c4de43d93f074e8e932fafb9b9aa8d"
+  },
+  {
+    "source": "5.08-LIVE-AUTHORITY-SIGNER-20261111/SYNTHETIC-EVM-VECTOR.json",
+    "destination": "tests/live508/fixtures/SYNTHETIC-EVM-VECTOR.json",
+    "originalSHA256": "ece717be83a10ea56efda5556a4701d33013dc5067d9eb34eaf2e79ff3864aa9",
+    "integratedSHA256": "ece717be83a10ea56efda5556a4701d33013dc5067d9eb34eaf2e79ff3864aa9"
+  },
+  {
+    "source": "5.08-PREP01-ARTIFACT-READINESS-20261110/artifacts/LQCTestToken.json",
+    "destination": "tests/live508/fixtures/LQCTestToken.json",
+    "originalSHA256": "590ca84f87e9a2706f4cde46dd397dc0fce566988f1ada4f297193eb2c4b50ff",
+    "integratedSHA256": "590ca84f87e9a2706f4cde46dd397dc0fce566988f1ada4f297193eb2c4b50ff"
+  },
+  {
+    "source": "5.08-LIVE-JOURNAL-COORDINATOR-20261111/transaction_hash.cjs",
+    "destination": "lqc_live508/codecs/transaction_hash.cjs",
+    "originalSHA256": "1df59fd36a64e9a3230c0b3fffab9e4685607d5da15b61b3bd52db6134cf5eac",
+    "integratedSHA256": "12da5ac626c69fc8cab2c3a3054dd8e9457fe6445fcc02cb7c7031515be2dc16"
+  },
+  {
+    "source": "5.08-LIVE-AUTHORITY-SIGNER-20261111/evm_transaction_codec.cjs",
+    "destination": "lqc_live508/codecs/evm_transaction_codec.cjs",
+    "originalSHA256": "2cb056eea4604c5dbbfad20870037ce482db274e5f757c06175d07c18b60d200",
+    "integratedSHA256": "594bb85ed040e06a6d4f346f6cbd7edde04b32b7a45d85f1ba50b1bf5559ea08"
+  },
+  {
+    "source": "5.08-LIVE-SUBMISSION-EVIDENCE-20261111/evidence_codec.cjs",
+    "destination": "lqc_live508/codecs/evidence_codec.cjs",
+    "originalSHA256": "1b2edac4d1425f74e0a17fca02557dbad8ede3574d20b36665c050af4d73fcd1",
+    "integratedSHA256": "e7fcf47556eee61d7855454e59a18cace1b57ac1f04d29bca22279fed22dbdc7"
+  },
+  {
+    "source": "5.08-LIVE-AUTHORITY-SIGNER-20261111/test_process_guard.cjs",
+    "destination": "lqc_live508/codecs/test_process_guard.cjs",
+    "originalSHA256": "f8d45ebc8cdd4e87bbd9e6c83c7963badde4f6e6d7f606940bcb2c72c3d2a289",
+    "integratedSHA256": "b7c17f9e56e4ddb33fa3052aa5f2d7819db772348f7add02fc23547af737bdbd"
+  },
+  {
+    "source": "5.08-PREP01-ARTIFACT-READINESS-20261110/receipt_events.cjs",
+    "destination": "lqc_live508/codecs/receipt_events.cjs",
+    "originalSHA256": "e00428b24ae3be8f37d325761f80fb0e35b199292a33504bb452298e28dfe8c8",
+    "integratedSHA256": "ded2a2dad7272c74b247a5f052ea4369dde3823c516a9bb87149e9be1ae4d3d1"
+  },
+  {
+    "source": "5.08-SINGLE-EXECUTION-PATH-20261111/unified_path.py",
+    "destination": "lqc_live508/shared/fixture_collector.py",
+    "originalSHA256": "676d0fbf1d2a81e7c6a0d354f04453dd62c3f027db5e8de9ec426af34ad77411",
+    "integratedSHA256": "7878b8e28fdc4c5b6c3586c4f7d471399fbb55818dd533b94679f9ff4517f16e",
+    "adaptation": "FixtureCollector class unchanged except fixed public artifact resource path; event-only codec plumbing uses namespaced runtime validator and PATH Node"
+  },
+  {
+    "source": "5.08-SINGLE-EXECUTION-PATH-20261111/codec_bridge.cjs",
+    "destination": "lqc_live508/codecs/fixture_events.cjs",
+    "originalSHA256": "cd8c1535668a13f0eb11cea1224df14585aa5127e8679a4a4fc7a4f93c39b75f",
+    "integratedSHA256": "5dd672b088199d8a21c2f6105758144daf0e4ded6a0e28d54769a9dc8f086afb",
+    "adaptation": "Exact events branch; constructor plan and its dependency tree excluded"
+  },
+  {
+    "source": "5.08-PREP01-ARTIFACT-READINESS-20261110/artifacts/LQCInterestRateModel.json",
+    "destination": "tests/live508/fixtures/LQCInterestRateModel.json",
+    "originalSHA256": "17db4b868d750781202c0e8fa7dd8d27308984b12ec9f7599695c5aeb5827b9b",
+    "integratedSHA256": "17db4b868d750781202c0e8fa7dd8d27308984b12ec9f7599695c5aeb5827b9b",
+    "adaptation": "Public artifact copied byte-for-byte"
+  },
+  {
+    "source": "5.08-PREP01-ARTIFACT-READINESS-20261110/artifacts/LQCLendingCore.json",
+    "destination": "tests/live508/fixtures/LQCLendingCore.json",
+    "originalSHA256": "13d3ae99d02264c48533647b80e63d2f3504d9b15fbd927bdf1526c4d2509c1e",
+    "integratedSHA256": "13d3ae99d02264c48533647b80e63d2f3504d9b15fbd927bdf1526c4d2509c1e",
+    "adaptation": "Public artifact copied byte-for-byte"
+  },
+  {
+    "source": "5.08-PREP01-ARTIFACT-READINESS-20261110/artifacts/LQCLendingInterestIndex.json",
+    "destination": "tests/live508/fixtures/LQCLendingInterestIndex.json",
+    "originalSHA256": "bfdca7c3bd6576e07e0303ed5238aa3b4eaf9cb9a21b2b5e2b5ed89180f5de65",
+    "integratedSHA256": "bfdca7c3bd6576e07e0303ed5238aa3b4eaf9cb9a21b2b5e2b5ed89180f5de65",
+    "adaptation": "Public artifact copied byte-for-byte"
+  },
+  {
+    "source": "5.08-PREP01-ARTIFACT-READINESS-20261110/artifacts/LQCLendingMarketRegistry.json",
+    "destination": "tests/live508/fixtures/LQCLendingMarketRegistry.json",
+    "originalSHA256": "fca2089dbe15c5a0028e238c7e655f7e09a55e0e77bc246b1c37fbe70f43e8a6",
+    "integratedSHA256": "fca2089dbe15c5a0028e238c7e655f7e09a55e0e77bc246b1c37fbe70f43e8a6",
+    "adaptation": "Public artifact copied byte-for-byte"
+  },
+  {
+    "source": "5.08-PREP01-ARTIFACT-READINESS-20261110/artifacts/LQCLiquidationEngine.json",
+    "destination": "tests/live508/fixtures/LQCLiquidationEngine.json",
+    "originalSHA256": "8952d3634bc73bafda60773839fca971b23708f4314a269730e84e3666cafc73",
+    "integratedSHA256": "8952d3634bc73bafda60773839fca971b23708f4314a269730e84e3666cafc73",
+    "adaptation": "Public artifact copied byte-for-byte"
+  },
+  {
+    "source": "5.08-PREP01-ARTIFACT-READINESS-20261110/artifacts/LQCLiquidityVault.json",
+    "destination": "tests/live508/fixtures/LQCLiquidityVault.json",
+    "originalSHA256": "1f99e47eff61f901980f37e1d20a5ec22923f4cc5b97510dc9a1bbddd27c3077",
+    "integratedSHA256": "1f99e47eff61f901980f37e1d20a5ec22923f4cc5b97510dc9a1bbddd27c3077",
+    "adaptation": "Public artifact copied byte-for-byte"
+  },
+  {
+    "source": "5.08-PREP01-ARTIFACT-READINESS-20261110/artifacts/LQCOracleManager.json",
+    "destination": "tests/live508/fixtures/LQCOracleManager.json",
+    "originalSHA256": "daec6ed4db542f02bd5d7fa9a3a4ade4be030856e77453e8ba6de8a71e1240df",
+    "integratedSHA256": "daec6ed4db542f02bd5d7fa9a3a4ade4be030856e77453e8ba6de8a71e1240df",
+    "adaptation": "Public artifact copied byte-for-byte"
+  },
+  {
+    "source": "5.08-PREP01-ARTIFACT-READINESS-20261110/artifacts/LQCTestnetPriceFeed.json",
+    "destination": "tests/live508/fixtures/LQCTestnetPriceFeed.json",
+    "originalSHA256": "cb16eecc09d24a268a4a1d9a88f7e894da81da81cf9eb4eaba1d8b67f81c1af7",
+    "integratedSHA256": "cb16eecc09d24a268a4a1d9a88f7e894da81da81cf9eb4eaba1d8b67f81c1af7",
+    "adaptation": "Public artifact copied byte-for-byte"
+  }
+]

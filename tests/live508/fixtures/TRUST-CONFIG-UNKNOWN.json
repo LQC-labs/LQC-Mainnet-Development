@@ -1,0 +1,12 @@
+{
+  "schema": 1,
+  "status": "UNKNOWN",
+  "revision": 1,
+  "validFrom": null,
+  "validUntil": null,
+  "keys": {},
+  "revokedApprovalIds": [],
+  "revokedKeyIds": [],
+  "authorityEvidence": "UNKNOWN; no real approver/public key/identity attestation has been supplied",
+  "journalBindings": {}
+}

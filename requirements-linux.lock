@@ -1,0 +1,4 @@
+# Linux x86_64, CPython 3.12; --only-binary=:all: --require-hashes.
+cryptography==41.0.7 --hash=sha256:43f2552a2378b44869fe8827aa19e69512e3245a219104438692385b0ee119d1
+cffi==1.17.1 --hash=sha256:b62ce867176a75d03a665bad002af8e6d54644fad99a3c70905c543130e39d93
+pycparser==2.22 --hash=sha256:c3702b6d3dd8c7abc1afa565d7e63d53a1d0bd86cdc24edd75470f4de499cfcc

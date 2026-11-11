@@ -77,3 +77,22 @@
 
 # Machine-specific migration inventories and diagnostics stay local.
 /migration-preparation/
+
+# Live 5.08: operational state is NEVER a public fixture or CI artifact.
+/var/live508/
+/runtime/live508/
+/local-evidence/live508/
+**/live508-journal/
+**/journal/journal.json
+**/journal/journal.json.new
+**/journal/owner.json
+**/journal/lock
+**/live508-approvals/
+**/live508-run-evidence/
+**/live508-signed-transactions/
+**/live508-checkpoints/
+/.live508-results/
+node_modules/
+.venv/
+__pycache__/
+*.pyc
