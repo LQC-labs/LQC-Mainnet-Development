@@ -1,0 +1,290 @@
+{
+  "status": "PROPOSED_NOT_AUTHORIZATION",
+  "executionEnabled": false,
+  "operations": [
+    {
+      "operation": "Asset18",
+      "kind": "CREATE",
+      "senderRole": "deployer",
+      "nonceFormula": "D+0",
+      "valueAtest": "0",
+      "approved": false,
+      "calldataBinding": "pinned artifact hash + exact ABI constructor args + fresh run/nonce"
+    },
+    {
+      "operation": "Asset6",
+      "kind": "CREATE",
+      "senderRole": "deployer",
+      "nonceFormula": "D+1",
+      "valueAtest": "0",
+      "approved": false,
+      "calldataBinding": "pinned artifact hash + exact ABI constructor args + fresh run/nonce"
+    },
+    {
+      "operation": "Vault",
+      "kind": "CREATE",
+      "senderRole": "deployer",
+      "nonceFormula": "D+2",
+      "valueAtest": "0",
+      "approved": false,
+      "calldataBinding": "pinned artifact hash + exact ABI constructor args + fresh run/nonce"
+    },
+    {
+      "operation": "CollateralPrimaryFeed",
+      "kind": "CREATE",
+      "senderRole": "deployer",
+      "nonceFormula": "D+3",
+      "valueAtest": "0",
+      "approved": false,
+      "calldataBinding": "pinned artifact hash + exact ABI constructor args + fresh run/nonce"
+    },
+    {
+      "operation": "CollateralSecondaryFeed",
+      "kind": "CREATE",
+      "senderRole": "deployer",
+      "nonceFormula": "D+4",
+      "valueAtest": "0",
+      "approved": false,
+      "calldataBinding": "pinned artifact hash + exact ABI constructor args + fresh run/nonce"
+    },
+    {
+      "operation": "DebtPrimaryFeed",
+      "kind": "CREATE",
+      "senderRole": "deployer",
+      "nonceFormula": "D+5",
+      "valueAtest": "0",
+      "approved": false,
+      "calldataBinding": "pinned artifact hash + exact ABI constructor args + fresh run/nonce"
+    },
+    {
+      "operation": "DebtSecondaryFeed",
+      "kind": "CREATE",
+      "senderRole": "deployer",
+      "nonceFormula": "D+6",
+      "valueAtest": "0",
+      "approved": false,
+      "calldataBinding": "pinned artifact hash + exact ABI constructor args + fresh run/nonce"
+    },
+    {
+      "operation": "OracleManager",
+      "kind": "CREATE",
+      "senderRole": "deployer",
+      "nonceFormula": "D+7",
+      "valueAtest": "0",
+      "approved": false,
+      "calldataBinding": "pinned artifact hash + exact ABI constructor args + fresh run/nonce"
+    },
+    {
+      "operation": "RateModel",
+      "kind": "CREATE",
+      "senderRole": "deployer",
+      "nonceFormula": "D+8",
+      "valueAtest": "0",
+      "approved": false,
+      "calldataBinding": "pinned artifact hash + exact ABI constructor args + fresh run/nonce"
+    },
+    {
+      "operation": "MarketRegistry",
+      "kind": "CREATE",
+      "senderRole": "deployer",
+      "nonceFormula": "D+9",
+      "valueAtest": "0",
+      "approved": false,
+      "calldataBinding": "pinned artifact hash + exact ABI constructor args + fresh run/nonce"
+    },
+    {
+      "operation": "InterestIndex",
+      "kind": "CREATE",
+      "senderRole": "deployer",
+      "nonceFormula": "D+10",
+      "valueAtest": "0",
+      "approved": false,
+      "calldataBinding": "pinned artifact hash + exact ABI constructor args + fresh run/nonce"
+    },
+    {
+      "operation": "LendingCore",
+      "kind": "CREATE",
+      "senderRole": "deployer",
+      "nonceFormula": "D+11",
+      "valueAtest": "0",
+      "approved": false,
+      "calldataBinding": "pinned artifact hash + exact ABI constructor args + fresh run/nonce"
+    },
+    {
+      "operation": "LiquidationEngine",
+      "kind": "CREATE",
+      "senderRole": "deployer",
+      "nonceFormula": "D+12",
+      "valueAtest": "0",
+      "approved": false,
+      "calldataBinding": "pinned artifact hash + exact ABI constructor args + fresh run/nonce"
+    },
+    {
+      "operation": "ConfigureCollateralOracle",
+      "kind": "CALL",
+      "targetDeployment": "OracleManager",
+      "method": "configureAsset",
+      "arguments": [
+        "Asset18",
+        "CollateralPrimaryFeed",
+        "CollateralSecondaryFeed",
+        "maxAge UNKNOWN",
+        "maxDeviationBps UNKNOWN"
+      ],
+      "senderRole": "owner",
+      "nonceFormula": "O+0 if all preceding owner calls are explicitly approved in this exact order",
+      "sideEffect": "ORACLE_ASSET_ENABLE_REQUIRES_SEPARATE_EXPLICIT_APPROVAL",
+      "approved": false,
+      "valueAtest": "0"
+    },
+    {
+      "operation": "ConfigureDebtOracle",
+      "kind": "CALL",
+      "targetDeployment": "OracleManager",
+      "method": "configureAsset",
+      "arguments": [
+        "Asset6",
+        "DebtPrimaryFeed",
+        "DebtSecondaryFeed",
+        "maxAge UNKNOWN",
+        "maxDeviationBps UNKNOWN"
+      ],
+      "senderRole": "owner",
+      "nonceFormula": "O+1 if all preceding owner calls are explicitly approved in this exact order",
+      "sideEffect": "ORACLE_ASSET_ENABLE_REQUIRES_SEPARATE_EXPLICIT_APPROVAL",
+      "approved": false,
+      "valueAtest": "0"
+    },
+    {
+      "operation": "ConfigureRate",
+      "kind": "CALL",
+      "targetDeployment": "RateModel",
+      "method": "configureRate",
+      "arguments": [
+        "marketId=keccak256(abi.encode(Asset18,Asset6))",
+        "rate config UNKNOWN; enabled=false"
+      ],
+      "senderRole": "owner",
+      "nonceFormula": "O+2 if all preceding owner calls are explicitly approved in this exact order",
+      "sideEffect": "NO_MARKET_ACTIVATION",
+      "approved": false,
+      "valueAtest": "0"
+    },
+    {
+      "operation": "InitializeIndex",
+      "kind": "CALL",
+      "targetDeployment": "InterestIndex",
+      "method": "initializeMarket",
+      "arguments": [
+        "marketId"
+      ],
+      "senderRole": "owner",
+      "nonceFormula": "O+3 if all preceding owner calls are explicitly approved in this exact order",
+      "sideEffect": "OWNER_ONLY_INITIALIZATION",
+      "approved": false,
+      "valueAtest": "0"
+    },
+    {
+      "operation": "SetCore",
+      "kind": "CALL",
+      "targetDeployment": "InterestIndex",
+      "method": "setCore",
+      "arguments": [
+        "LendingCore"
+      ],
+      "senderRole": "owner",
+      "nonceFormula": "O+4 if all preceding owner calls are explicitly approved in this exact order",
+      "sideEffect": "OWNER_ONLY_AUTHORITY_LINK",
+      "approved": false,
+      "valueAtest": "0"
+    },
+    {
+      "operation": "ConfigureMarket",
+      "kind": "CALL",
+      "targetDeployment": "MarketRegistry",
+      "method": "configureMarket",
+      "arguments": [
+        "market config UNKNOWN; enabled=false"
+      ],
+      "senderRole": "owner",
+      "nonceFormula": "O+5 if all preceding owner calls are explicitly approved in this exact order",
+      "sideEffect": "NO_MARKET_ACTIVATION",
+      "approved": false,
+      "valueAtest": "0"
+    },
+    {
+      "operation": "SetLiquidationEngine",
+      "kind": "CALL",
+      "targetDeployment": "LendingCore",
+      "method": "setLiquidationEngine",
+      "arguments": [
+        "LiquidationEngine"
+      ],
+      "senderRole": "owner",
+      "nonceFormula": "O+6 if all preceding owner calls are explicitly approved in this exact order",
+      "sideEffect": "OWNER_ONLY_AUTHORITY_LINK",
+      "approved": false,
+      "valueAtest": "0"
+    },
+    {
+      "operation": "DisableCollateralOracle",
+      "kind": "OPTIONAL_SAFETY_CALL",
+      "senderRole": "guardian OR owner (one exact role chosen before signing)",
+      "targetDeployment": "OracleManager",
+      "method": "setAssetEnabled",
+      "arguments": "Asset18,false",
+      "nonceFormula": "G+k or next owner nonce in separately approved ordered plan; k UNKNOWN",
+      "approved": false,
+      "valueAtest": "0"
+    },
+    {
+      "operation": "DisableDebtOracle",
+      "kind": "OPTIONAL_SAFETY_CALL",
+      "senderRole": "guardian OR owner (one exact role chosen before signing)",
+      "targetDeployment": "OracleManager",
+      "method": "setAssetEnabled",
+      "arguments": "Asset6,false",
+      "nonceFormula": "G+k or next owner nonce in separately approved ordered plan; k UNKNOWN",
+      "approved": false,
+      "valueAtest": "0"
+    },
+    {
+      "operation": "DisableRate",
+      "kind": "OPTIONAL_SAFETY_CALL",
+      "senderRole": "guardian OR owner (one exact role chosen before signing)",
+      "targetDeployment": "RateModel",
+      "method": "setRateEnabled",
+      "arguments": "marketId,false",
+      "nonceFormula": "G+k or next owner nonce in separately approved ordered plan; k UNKNOWN",
+      "approved": false,
+      "valueAtest": "0"
+    },
+    {
+      "operation": "DisableMarket",
+      "kind": "OPTIONAL_SAFETY_CALL",
+      "senderRole": "guardian OR owner (one exact role chosen before signing)",
+      "targetDeployment": "MarketRegistry",
+      "method": "setMarketEnabled",
+      "arguments": "marketId,false",
+      "nonceFormula": "G+k or next owner nonce in separately approved ordered plan; k UNKNOWN",
+      "approved": false,
+      "valueAtest": "0"
+    }
+  ],
+  "denied": [
+    "chain97 calls",
+    "unknown calldata/target/operation",
+    "network/RPC/ownership changes outside scope",
+    "Vault Guardian assignment",
+    "market or rate enabled=true",
+    "mint",
+    "asset transfer",
+    "approve",
+    "deposit",
+    "borrow",
+    "swap",
+    "liquidate",
+    "arbitrary signing",
+    "replacement or gas bump without explicit authorization"
+  ]
+}

@@ -1,0 +1,8 @@
+{
+  "classification": "SYNTHETIC_FIXED_PUBLIC_R_S_NOT_PRODUCED_BY_SIGNING_OR_KEY_GENERATION",
+  "construction": "EIP-1559 serialization with public r=1, s=1, yParity=0. No corresponding private key is known or accessed. Ethers decodes and recovers the implied public sender.",
+  "rawTransactionHex": "0x02d4830dfe09800105830186a08080826000c0800101",
+  "sender": "0x04083bb8b964a19c6b4b4d2324810979d214e02b",
+  "txHash": "0x41c287d173c31756081568b458f5aba1b11b7846af66f0c0197022200b231adf",
+  "evmSigningHash": "0xe26379439d7e2ea8c79dad4984f25f5d0de4abcd990e33219d20b23703b6facc"
+}

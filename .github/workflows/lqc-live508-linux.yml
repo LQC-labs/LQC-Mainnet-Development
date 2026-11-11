@@ -1,0 +1,61 @@
+name: LQC 5.08 synthetic Linux verification
+on:
+  pull_request:
+    branches: [main, dev/lqc-core]
+    paths:
+      - 'lqc_live508/**'
+      - 'tests/live508/**'
+      - 'verification/live508/**'
+      - 'package*.json'
+      - 'requirements-linux.lock'
+      - 'pyproject.toml'
+      - '.python-version'
+      - '.gitignore'
+      - '.github/workflows/lqc-live508-linux.yml'
+permissions:
+  contents: read
+concurrency:
+  group: live508-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+jobs:
+  synthetic:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      PYTHONDONTWRITEBYTECODE: '1'
+      PYTHONNOUSERSITE: '1'
+      OMP_NUM_THREADS: '1'
+      OPENBLAS_NUM_THREADS: '1'
+      NODE_OPTIONS: '--max-old-space-size=256'
+      LQC_RUN_NATIVE_EVM: '0'
+      LQC_RUN_EVM_CONTRACT: '0'
+      LQC_RUN_EVMRPC_INTEGRATION: '0'
+      LQC_RUN_RESTART_REGRESSION: '0'
+      LQC_RUN_ADMISSION_REGRESSION: '0'
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
+        with:
+          python-version: '3.12.3'
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38
+        with:
+          node-version: '22.16.0'
+      - name: Install pinned verification dependencies (no lifecycle scripts)
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(node --version)" = v22.16.0
+          test "$(python -c 'import platform; print(platform.python_version())')" = 3.12.3
+          python -m pip install --only-binary=:all: --require-hashes -r requirements-linux.lock
+          npm ci --ignore-scripts --no-audit --no-fund
+      - name: All four Live layers and related synthetic regressions only
+        shell: bash
+        run: |
+          set -euo pipefail
+          ulimit -t 240
+          ulimit -n 256
+          timeout --signal=TERM --kill-after=10s 360s \
+            python -B -m tests.live508.run_checks --output "$RUNNER_TEMP/live508-results"
+          git diff --exit-code

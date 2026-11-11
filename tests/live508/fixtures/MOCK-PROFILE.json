@@ -1,0 +1,383 @@
+{
+  "schemaVersion": 2,
+  "chainId": 917001,
+  "chainIdHex": "0xdfe09",
+  "cosmosChainId": "lqc-devnet-test-1",
+  "denom": "atest",
+  "nativeDecimals": 18,
+  "runId": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "genesisSHA256": "4cea70b94c6cf791334a4abf289e1ea1e01f3dcbf52e2ba15a774dccc4615201",
+  "sourceCommit": "8db16368b3e09a94bfd500a17e33e3e9ef62ed51",
+  "roles": {
+    "deployer": "0x1111111111111111111111111111111111111111",
+    "owner": "0x2222222222222222222222222222222222222222",
+    "guardian": "0x3333333333333333333333333333333333333333"
+  },
+  "gas": {
+    "blockGasLimit": "1000000",
+    "maxTotalBudgetAtest": "300000"
+  },
+  "vault": {
+    "asset": "Asset18",
+    "depositCap": "1000"
+  },
+  "dependencies": {
+    "Asset18": [],
+    "Asset6": [],
+    "Vault": [
+      "Asset18"
+    ],
+    "CollateralPrimaryFeed": [],
+    "CollateralSecondaryFeed": [],
+    "DebtPrimaryFeed": [],
+    "DebtSecondaryFeed": [],
+    "OracleManager": [],
+    "RateModel": [],
+    "MarketRegistry": [
+      "OracleManager"
+    ],
+    "InterestIndex": [
+      "RateModel"
+    ],
+    "LendingCore": [
+      "MarketRegistry",
+      "InterestIndex"
+    ],
+    "LiquidationEngine": [
+      "LendingCore"
+    ]
+  },
+  "feeds": {
+    "CollateralPrimaryFeed": {
+      "classification": "TEST_INPUT",
+      "decimals": "8",
+      "initialAnswer": "100000000",
+      "priceSource": "SYNTHETIC TEST INPUT",
+      "updatedAt": "100",
+      "observedAt": "110"
+    },
+    "CollateralSecondaryFeed": {
+      "classification": "TEST_INPUT",
+      "decimals": "8",
+      "initialAnswer": "100000000",
+      "priceSource": "SYNTHETIC TEST INPUT",
+      "updatedAt": "100",
+      "observedAt": "110"
+    },
+    "DebtPrimaryFeed": {
+      "classification": "TEST_INPUT",
+      "decimals": "8",
+      "initialAnswer": "100000000",
+      "priceSource": "SYNTHETIC TEST INPUT",
+      "updatedAt": "100",
+      "observedAt": "110"
+    },
+    "DebtSecondaryFeed": {
+      "classification": "TEST_INPUT",
+      "decimals": "8",
+      "initialAnswer": "100000000",
+      "priceSource": "SYNTHETIC TEST INPUT",
+      "updatedAt": "100",
+      "observedAt": "110"
+    }
+  },
+  "oracle": {
+    "collateral": {
+      "asset": "Asset18",
+      "primary": "CollateralPrimaryFeed",
+      "secondary": "CollateralSecondaryFeed",
+      "maxAge": "120",
+      "maxDeviationBps": "100"
+    },
+    "debt": {
+      "asset": "Asset6",
+      "primary": "DebtPrimaryFeed",
+      "secondary": "DebtSecondaryFeed",
+      "maxAge": "120",
+      "maxDeviationBps": "100"
+    }
+  },
+  "rate": {
+    "baseAprBps": "100",
+    "slope1AprBps": "400",
+    "slope2AprBps": "6000",
+    "optimalUtilizationBps": "7500",
+    "reserveFactorBps": "500",
+    "enabled": false
+  },
+  "market": {
+    "collateralAsset": "Asset18",
+    "debtAsset": "Asset6",
+    "collateralDecimals": 18,
+    "debtDecimals": 6,
+    "maxLtvBps": "3000",
+    "liquidationThresholdBps": "5500",
+    "liquidationBonusBps": "200",
+    "supplyCap": "100000000",
+    "borrowCap": "20000000",
+    "minBorrow": "1000000",
+    "enabled": false
+  },
+  "transactions": [
+    {
+      "operation": "Asset18",
+      "nonce": "0",
+      "gasLimit": "1000",
+      "maxFeePerGasAtest": "1",
+      "senderRole": "deployer",
+      "maxPriorityFeePerGasAtest": "0"
+    },
+    {
+      "operation": "Asset6",
+      "nonce": "1",
+      "gasLimit": "1000",
+      "maxFeePerGasAtest": "1",
+      "senderRole": "deployer",
+      "maxPriorityFeePerGasAtest": "0"
+    },
+    {
+      "operation": "Vault",
+      "nonce": "2",
+      "gasLimit": "1000",
+      "maxFeePerGasAtest": "1",
+      "senderRole": "deployer",
+      "maxPriorityFeePerGasAtest": "0"
+    },
+    {
+      "operation": "CollateralPrimaryFeed",
+      "nonce": "3",
+      "gasLimit": "1000",
+      "maxFeePerGasAtest": "1",
+      "senderRole": "deployer",
+      "maxPriorityFeePerGasAtest": "0"
+    },
+    {
+      "operation": "CollateralSecondaryFeed",
+      "nonce": "4",
+      "gasLimit": "1000",
+      "maxFeePerGasAtest": "1",
+      "senderRole": "deployer",
+      "maxPriorityFeePerGasAtest": "0"
+    },
+    {
+      "operation": "DebtPrimaryFeed",
+      "nonce": "5",
+      "gasLimit": "1000",
+      "maxFeePerGasAtest": "1",
+      "senderRole": "deployer",
+      "maxPriorityFeePerGasAtest": "0"
+    },
+    {
+      "operation": "DebtSecondaryFeed",
+      "nonce": "6",
+      "gasLimit": "1000",
+      "maxFeePerGasAtest": "1",
+      "senderRole": "deployer",
+      "maxPriorityFeePerGasAtest": "0"
+    },
+    {
+      "operation": "OracleManager",
+      "nonce": "7",
+      "gasLimit": "1000",
+      "maxFeePerGasAtest": "1",
+      "senderRole": "deployer",
+      "maxPriorityFeePerGasAtest": "0"
+    },
+    {
+      "operation": "RateModel",
+      "nonce": "8",
+      "gasLimit": "1000",
+      "maxFeePerGasAtest": "1",
+      "senderRole": "deployer",
+      "maxPriorityFeePerGasAtest": "0"
+    },
+    {
+      "operation": "MarketRegistry",
+      "nonce": "9",
+      "gasLimit": "1000",
+      "maxFeePerGasAtest": "1",
+      "senderRole": "deployer",
+      "maxPriorityFeePerGasAtest": "0"
+    },
+    {
+      "operation": "InterestIndex",
+      "nonce": "10",
+      "gasLimit": "1000",
+      "maxFeePerGasAtest": "1",
+      "senderRole": "deployer",
+      "maxPriorityFeePerGasAtest": "0"
+    },
+    {
+      "operation": "LendingCore",
+      "nonce": "11",
+      "gasLimit": "1000",
+      "maxFeePerGasAtest": "1",
+      "senderRole": "deployer",
+      "maxPriorityFeePerGasAtest": "0"
+    },
+    {
+      "operation": "LiquidationEngine",
+      "nonce": "12",
+      "gasLimit": "1000",
+      "maxFeePerGasAtest": "1",
+      "senderRole": "deployer",
+      "maxPriorityFeePerGasAtest": "0"
+    },
+    {
+      "operation": "ConfigureCollateralOracle",
+      "nonce": "0",
+      "gasLimit": "1000",
+      "maxFeePerGasAtest": "1",
+      "senderRole": "owner",
+      "maxPriorityFeePerGasAtest": "0"
+    },
+    {
+      "operation": "ConfigureDebtOracle",
+      "nonce": "1",
+      "gasLimit": "1000",
+      "maxFeePerGasAtest": "1",
+      "senderRole": "owner",
+      "maxPriorityFeePerGasAtest": "0"
+    },
+    {
+      "operation": "ConfigureRate",
+      "nonce": "2",
+      "gasLimit": "1000",
+      "maxFeePerGasAtest": "1",
+      "senderRole": "owner",
+      "maxPriorityFeePerGasAtest": "0"
+    },
+    {
+      "operation": "InitializeIndex",
+      "nonce": "3",
+      "gasLimit": "1000",
+      "maxFeePerGasAtest": "1",
+      "senderRole": "owner",
+      "maxPriorityFeePerGasAtest": "0"
+    },
+    {
+      "operation": "SetCore",
+      "nonce": "4",
+      "gasLimit": "1000",
+      "maxFeePerGasAtest": "1",
+      "senderRole": "owner",
+      "maxPriorityFeePerGasAtest": "0"
+    },
+    {
+      "operation": "ConfigureMarket",
+      "nonce": "5",
+      "gasLimit": "1000",
+      "maxFeePerGasAtest": "1",
+      "senderRole": "owner",
+      "maxPriorityFeePerGasAtest": "0"
+    },
+    {
+      "operation": "SetLiquidationEngine",
+      "nonce": "6",
+      "gasLimit": "1000",
+      "maxFeePerGasAtest": "1",
+      "senderRole": "owner",
+      "maxPriorityFeePerGasAtest": "0"
+    }
+  ],
+  "backend": null,
+  "executionAuthorized": false,
+  "activationAuthorized": false,
+  "senderPolicy": "DISTINCT_DEPLOYER_OWNER_GUARDIAN",
+  "roleState": {
+    "deployer": {
+      "authorization": {
+        "scope": "DISPOSABLE_917001_TEST_ONLY",
+        "evidenceSHA256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+      },
+      "nonceSnapshot": {
+        "chainId": 917001,
+        "genesisSHA256": "4cea70b94c6cf791334a4abf289e1ea1e01f3dcbf52e2ba15a774dccc4615201",
+        "address": "0x1111111111111111111111111111111111111111",
+        "blockNumber": "1",
+        "blockHash": "0xdddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+        "latestNonce": "0",
+        "pendingNonce": "0",
+        "balanceAtest": "1000000"
+      },
+      "gas": {
+        "maxBudgetAtest": "100000",
+        "reservedAtest": "1"
+      }
+    },
+    "owner": {
+      "authorization": {
+        "scope": "DISPOSABLE_917001_TEST_ONLY",
+        "evidenceSHA256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+      },
+      "nonceSnapshot": {
+        "chainId": 917001,
+        "genesisSHA256": "4cea70b94c6cf791334a4abf289e1ea1e01f3dcbf52e2ba15a774dccc4615201",
+        "address": "0x2222222222222222222222222222222222222222",
+        "blockNumber": "1",
+        "blockHash": "0xdddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+        "latestNonce": "0",
+        "pendingNonce": "0",
+        "balanceAtest": "1000000"
+      },
+      "gas": {
+        "maxBudgetAtest": "100000",
+        "reservedAtest": "1"
+      }
+    },
+    "guardian": {
+      "authorization": {
+        "scope": "DISPOSABLE_917001_TEST_ONLY",
+        "evidenceSHA256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+      },
+      "nonceSnapshot": {
+        "chainId": 917001,
+        "genesisSHA256": "4cea70b94c6cf791334a4abf289e1ea1e01f3dcbf52e2ba15a774dccc4615201",
+        "address": "0x3333333333333333333333333333333333333333",
+        "blockNumber": "1",
+        "blockHash": "0xdddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+        "latestNonce": "0",
+        "pendingNonce": "0",
+        "balanceAtest": "1000000"
+      },
+      "gas": {
+        "maxBudgetAtest": "100000",
+        "reservedAtest": "1"
+      }
+    }
+  },
+  "safetyTransactions": [
+    {
+      "operation": "DisableCollateralOracle",
+      "senderRole": "guardian",
+      "nonce": "0",
+      "gasLimit": "1000",
+      "maxFeePerGasAtest": "1",
+      "maxPriorityFeePerGasAtest": "0"
+    },
+    {
+      "operation": "DisableDebtOracle",
+      "senderRole": "guardian",
+      "nonce": "1",
+      "gasLimit": "1000",
+      "maxFeePerGasAtest": "1",
+      "maxPriorityFeePerGasAtest": "0"
+    },
+    {
+      "operation": "DisableRate",
+      "senderRole": "guardian",
+      "nonce": "2",
+      "gasLimit": "1000",
+      "maxFeePerGasAtest": "1",
+      "maxPriorityFeePerGasAtest": "0"
+    },
+    {
+      "operation": "DisableMarket",
+      "senderRole": "guardian",
+      "nonce": "3",
+      "gasLimit": "1000",
+      "maxFeePerGasAtest": "1",
+      "maxPriorityFeePerGasAtest": "0"
+    }
+  ]
+}

@@ -1,0 +1,91 @@
+{
+  "meaning": "Historical snapshots, never used as the current integration baseline",
+  "manifests": {
+    "5.08-LIVE-AUTHORITY-SIGNER-20261111/SHA256.json": {
+      "manifestSHA256": "eec8516e2b7c029034d94b81c7bb304f1b9965a5a9e4ac90f065a39b8da175cb",
+      "snapshotEntries": {
+        "CHANGED-FILES.json": "8f4e25cbd694bc26c939abebe541ff392ddf83d1a9ee01f72405da036c182eac",
+        "DATA-CONTRACT.md": "2f7276084da5ded437040f19cf875e2dc3b40174e14befb6625bec42f9ef0184",
+        "REPORT.md": "635c9cf4d08092c0f61751192fc838ddd5eb4c56a3318cb75f5b82fd3c8e61d6",
+        "REUSE-PROVENANCE.json": "13ee09a48319c8703299c9b6c26427fc42a920ead4764a8803c63575131e643b",
+        "SYNTHETIC-EVM-VECTOR.json": "ece717be83a10ea56efda5556a4701d33013dc5067d9eb34eaf2e79ff3864aa9",
+        "TEST-RESULT.json": "bde709d839c91b4b80c601d2b80f4853ea5aa3de75a03dce600639e215eb6ea0",
+        "VERIFICATION-DEPENDENCIES.json": "f79b01063db8e3a8b54d77794f4333c9f11f6bcb03e5efca23a8fd452aa35b86",
+        "authority_binding-reuse.diff": "69e58a8105da0a4b5d3f9cc019bde16f3d7995da1bebadfdd65fe13abd3884b0",
+        "evm_transaction_codec.cjs": "2cb056eea4604c5dbbfad20870037ce482db274e5f757c06175d07c18b60d200",
+        "live_authority_binding.py": "d0678e0f3170e7c3f3f3420ab1e50dae15f5f224d912232ea6004b7b0bf6d155",
+        "live_rpc-reuse.diff": "61993c56af40d6c1b1efb2f9bbc6b704696a19e210b37e197cbc52150f57cdf7",
+        "live_signer.py": "030cc42d4b9738511a97bb0e5e585e136a10c9b6ccc4fe8ebc8af7ae4f347d11",
+        "local-tests.log": "3077588dd44bc75334754bf027b250cb811eb78baf3a73a83e4c1951cd7ee56a",
+        "reuse_authority.py": "6173d8c7978eef6154f7bf1fb72c336231320b17a385f7624c6309592f38bb79",
+        "run_local_tests.py": "4fc9f70840e35c04e74b341c9bc3b381dade52beff6babb67b42745101c847cb",
+        "test_live_authority_signer.py": "56c26f41d3ab6e5fa31782432b68e61b2214952685128796f8b428a14920072c",
+        "test_process_guard.cjs": "f8d45ebc8cdd4e87bbd9e6c83c7963badde4f6e6d7f606940bcb2c72c3d2a289",
+        "../5.08-SINGLE-EXECUTION-PATH-20261111/authority_binding.py": "ff97cfd922e2a228f6f43126f755d7126989299d8c073ae4fa7d80e852d24849",
+        "../5.08-LIVE-RPC-GENESIS-20261111/live_rpc.py": "dbaa53d27021ddfb1ebe421aab09b53a0c19cb38993950b06a2528b178c2e159"
+      }
+    },
+    "5.08-LIVE-JOURNAL-COORDINATOR-20261111/SHA256.json": {
+      "manifestSHA256": "337112576950c7fb898693922803b6808d4b86d188e85335600fe1466d1f3c38",
+      "snapshotEntries": {
+        "CHANGED-FILES.json": "3ef1fd908c0006b56daad5dd098659e97284cdf0eed2bdcde8c517962adfe666",
+        "DATA-CONTRACT.md": "8c18b4c95a316eba31434d7eb01aa088a41c21b888cf3bb20265dd4e21c17fad",
+        "REPORT.md": "b479a859174f7e538fa5ae12023e038874011ae9ae69aaa0c3619e730ba1c363",
+        "REUSE-PROVENANCE.json": "1e0bd22c5d6fb5083e93042d1321a1b15c5b91f8baf79566b7db5b2d7ed467cd",
+        "TEST-RESULT.json": "408e5d9b1924ad390faac0989ab68a7924423a332c18c661f4c2dc5feb616851",
+        "legacy.py": "9ab260ba0f83e8d667a27ce7612a17367307b9d80c0ac95bfa7019e5908beb5b",
+        "live_contracts.py": "770dfb8b24b3e5fe4d38d17592489025b0aea045f1b675a2dd3bc0b5f86dd8b6",
+        "live_coordinator.py": "44d0c1155ba71fbb6632c42df61419acbcfca193bc1eb9afe33495fbbd20bd2e",
+        "live_hash.py": "6945c03a6fe120d319fdadc83ef46b21210631721cc30842d25819e3d4f47be5",
+        "live_journal.py": "bb0e94739e75a966dccc5620127beae07feb7046062a84f51b6b336673439171",
+        "local-tests.log": "ef687bb388accdb3135da38341a0abb6cd035b5d2556c6242189c8af7e831615",
+        "run_local_tests.py": "704ac290165357daf2b1c9ed57030690bd0b28ad79ff64b3910e62cc14d821c9",
+        "test_live_journal.py": "29a71e744fb5267ec64ac57e63a19cefec6669d5e0cb5e5a734f8db8580d2875",
+        "transaction_hash.cjs": "1df59fd36a64e9a3230c0b3fffab9e4685607d5da15b61b3bd52db6134cf5eac"
+      }
+    },
+    "5.08-LIVE-RPC-GENESIS-20261111/SHA256.json": {
+      "manifestSHA256": "36e05fd5380a5e137bed3eeba3dd8ce6835fde687dbebea7cd5b6472c554ced4",
+      "snapshotEntries": {
+        "CHANGED-FILES.json": "c7f8d201a80be4dab828b0b750c06e4bdf42a6eb5b2dca14bf2d5793dee92375",
+        "DATA-CONTRACT.md": "82553f43917ea1dfd598bf2eed8e2bb58f3a66d8438acedb32be94376e132265",
+        "REPORT.md": "1f4aff6a4bf72d9f60f7f6747782f8474990a7b53050079d2054a6fa93f18e6b",
+        "REUSE-PROVENANCE.json": "1366fb5250696ec121a8d960404c3e44144eadcd9e7133276854a339f8627fd6",
+        "TEST-RESULT.json": "3edeaa4ece64d7905ff0fe9faeaabe0a7b37be49bc44dfb62090b2b2317dd21f",
+        "live_rpc.py": "976da379f24f2cce843ec06f5487904ff527e7333d7c03767ce64e5ad1f0c6b4",
+        "local-tests.log": "d734595b263a8be7d3a720575858610fe4d7c75751feeb83472d7108a5dfa387",
+        "offline-adapters-refactor.diff": "8a5b2ef6d6e28b9b30e9298fe223b365be9430270e63f6bb8a5774291e838bf5",
+        "reuse.py": "6e5391be704b70b50255a4e43ef381bd3b30e2b9633da7547421f54ca91547be",
+        "run_binding.py": "e6324e0161c5eaf48f92f0a11156a5eca33e9515853e6ff3f5b6c1bd7155d7c3",
+        "run_local_tests.py": "9cf3496cc998e90db1e5877a61a8fb190dc0e5f57792fc7157e6aebf4ef8a9ea",
+        "test_live_rpc.py": "d860fb0c60b3ec69e835af8f31fd464dd236b4f504695c3300bc898326782bc6",
+        "../5.08-SINGLE-EXECUTION-PATH-20261111/offline_adapters.py": "8a618e74d2dc6cd7926864502a2965311815ccb4193d70a8b9be0d45b7f2e612"
+      }
+    },
+    "5.08-LIVE-SUBMISSION-EVIDENCE-20261111/SHA256.json": {
+      "manifestSHA256": "0777cf32e1922c74f8cd28ba1a28b8e825fe43335d0c0cbb05ea0ed56cf0b19e",
+      "snapshotEntries": {
+        "CHANGED-FILES.json": "0962e5347b1197f801619cd50b5deafe503237916f6c28b79f74e47a0ce8498b",
+        "DATA-CONTRACT.md": "1da93ed172498d285ec8fd27a37e9e17332174d428365fd34851dc292b37b306",
+        "INITIAL-TEST-RESULT.json": "a03a856160c575c6de1222138550a35d86e66f01d64922e41818dcbec1ebf871",
+        "PRESERVED-SOURCES.json": "39d399012ace82a3dc6e0b3774d3d04a2738f63c16b748028b3393ed7e5b9c3c",
+        "REPORT.md": "bd7fc861d90a40755a4672b6d0f85bd5d28f69ef609b7cbe244db7cfa905672e",
+        "REUSE-PROVENANCE.json": "60cff4c6523b95cb74796b60da70035302819fe4dd37379a4a4c578e13428fab",
+        "TEST-RESULT.json": "1e0fb9ad15079c0b992fe7c9a09b95bf9c3b12c523a09861bf25c75c97e46442",
+        "evidence_codec.cjs": "1b2edac4d1425f74e0a17fca02557dbad8ede3574d20b36665c050af4d73fcd1",
+        "initial-tests.log": "10c079853c85c5e291a3aa9dfdcd4d6da2705dc8f3db9701603be179a1cedda5",
+        "live_authority_binding-reuse.diff": "aa519af87dfb1baaddd0f2af9dc1075d2ecf1d97b8a3c7dab46cb5134153da01",
+        "live_contracts-reuse.diff": "1770c4d7e3910ce8b4ff5e3cbb77ed71a4976a81e40cfc10878e3932c925138b",
+        "live_evidence.py": "e05792889ba8ab4fda89b579b7cbff14e75f31d3653bfe214a17a94b5a52b3bc",
+        "live_journal-reuse.diff": "7f793cb61648c479e0e7cc22b31f4bc26c4deece61ab6319f0ed58244a907148",
+        "live_path.py": "4b8ef54dd38dbab0ecd5898666fc1a5d70580a4d8ee8986faa297263af043260",
+        "live_rpc-reuse.diff": "961dc627f12e3d8cc0ebd4e8380dba4e7edcd3b612caf72e82194abbe930a306",
+        "local-tests.log": "a7bf42fbb2696bd7857ae46f9c514a57ebc8a68099b074eb789e7b7bf6184bac",
+        "offline_adapters-reuse.diff": "e5ddabb046779cbd6fbcaece2a625791f410519241b6665cd8b548407969f3c0",
+        "reuse_execution.py": "a39c469a8bdf567c12d63cd5ebca5ee026c16eb830adcbbd1be5fb2de87fd2c1",
+        "run_local_tests.py": "9fe1bb410faaa8b5754d7476604388cd96a4183521839ecf61c88cfffc6cf38d",
+        "test_live_execution.py": "205efb8529b798e3796b88ac7f5a15e01a3daa6cb2f6ccb19a8eb8592f993b9c"
+      }
+    }
+  }
+}
