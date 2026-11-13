@@ -1,0 +1,65 @@
+name: LQC Core 1-2 Linux integrity verification
+
+on:
+  push:
+    branches: ['verify/lqc-core12-linux-20261101']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    defaults:
+      run:
+        shell: bash
+    env:
+      GOPROXY: https://proxy.golang.org
+      GOSUMDB: sum.golang.org
+      GOPRIVATE: ''
+      GONOPROXY: ''
+      GONOSUMDB: ''
+      GOTOOLCHAIN: local
+      GOWORK: 'off'
+      GOFLAGS: ''
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@v6
+        with:
+          go-version: '1.25.9'
+          cache: false
+      - name: Create isolated Linux caches and unpack exact source bytes
+        run: |
+          set -euo pipefail
+          root="$(mktemp -d "$RUNNER_TEMP/lqc-core12.XXXXXXXX")"
+          mkdir -p "$root/source" "$root/evidence" "$root/mod" "$root/build"
+          echo "LQC_VERIFY_ROOT=$root" >> "$GITHUB_ENV"
+          echo "GOMODCACHE=$root/mod" >> "$GITHUB_ENV"
+          echo "GOCACHE=$root/build" >> "$GITHUB_ENV"
+          tar -xf verification/core12/source.tar -C "$root/source"
+          {
+            echo "repository=$GITHUB_REPOSITORY"
+            echo "ref=$GITHUB_REF"
+            echo "commit=$GITHUB_SHA"
+            echo "run_id=$GITHUB_RUN_ID"
+            echo "run_attempt=$GITHUB_RUN_ATTEMPT"
+            sha256sum verification/core12/source.tar verification/core12/source.sha256 verification/core12/verify-linux.sh
+          } | tee "$root/evidence/run-identity.txt"
+      - name: Verify integrity, tests, build and source hashes
+        run: |
+          bash verification/core12/verify-linux.sh \
+            "$LQC_VERIFY_ROOT/source" \
+            "$GITHUB_WORKSPACE/verification/core12/source.sha256" \
+            "$LQC_VERIFY_ROOT/evidence"
+      - name: Preserve logs even after a failed check
+        if: always() && env.LQC_VERIFY_ROOT != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: lqc-core12-linux-evidence-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ env.LQC_VERIFY_ROOT }}/evidence/
+          if-no-files-found: error
+          retention-days: 14

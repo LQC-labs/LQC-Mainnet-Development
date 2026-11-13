@@ -1,0 +1,58 @@
+name: LQC Core 2-1 Linux final verification
+on:
+  push:
+    branches: ['verify/lqc-core21-linux-20261101']
+    paths:
+      - '.github/workflows/lqc-core21-linux-verify.yml'
+      - 'verification/core21/**'
+permissions:
+  contents: read
+concurrency:
+  group: lqc-core21-linux-verification
+  cancel-in-progress: false
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    defaults:
+      run:
+        shell: bash
+    env:
+      CGO_ENABLED: '1'
+      CC: gcc
+      CXX: g++
+      GOPROXY: https://proxy.golang.org
+      GOSUMDB: sum.golang.org
+      GOPRIVATE: ''
+      GONOPROXY: ''
+      GONOSUMDB: ''
+      GOTOOLCHAIN: local
+      GOWORK: 'off'
+      GOMAXPROCS: '2'
+      GOFLAGS: '-p=2'
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@v6
+        with:
+          go-version: '1.25.9'
+          cache: false
+      - name: Create isolated caches and evidence directory
+        run: |
+          set -euo pipefail
+          root="$(mktemp -d "$RUNNER_TEMP/lqc-core21.XXXXXXXX")"
+          mkdir -p "$root/evidence" "$root/mod" "$root/build"
+          echo "LQC_VERIFY_ROOT=$root" >> "$GITHUB_ENV"
+          echo "GOMODCACHE=$root/mod" >> "$GITHUB_ENV"
+          echo "GOCACHE=$root/build" >> "$GITHUB_ENV"
+      - name: Verify compiler, integrity, Go, CLI and regressions
+        run: bash verification/core21/verify-linux.sh
+      - name: Preserve verification evidence
+        if: always() && env.LQC_VERIFY_ROOT != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: lqc-core21-linux-evidence-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ env.LQC_VERIFY_ROOT }}/evidence/
+          if-no-files-found: error
+          retention-days: 14

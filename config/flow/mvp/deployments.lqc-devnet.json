@@ -1,0 +1,86 @@
+{
+  "schemaVersion": 1,
+  "interfaceFamily": "mvp",
+  "chainId": 917001,
+  "status": "unconfigured",
+  "transactionsEnabled": false,
+  "source": {
+    "coreCommit": "b79394246a8819a7651275bd07c88b83bccdd8df",
+    "flowCommit": "013d159f05ed6a924ee965ec41ef193a069da122",
+    "overlayArchiveSha256": "b24bfb2000eaf3510a6e0b49ab30a0a2de74a4969337b3355886f2faa49032dd",
+    "candidateState": "draft-unmerged",
+    "productionApproved": false
+  },
+  "contracts": {
+    "mvp.tokenA": {
+      "artifact": "LQCTestToken",
+      "abiVersion": "mvp.LQCTestToken-0.8.30-v1",
+      "chainId": 917001,
+      "address": null,
+      "transactionHash": null,
+      "runtimeBytecodeSha256": null,
+      "status": "unconfigured",
+      "creationKind": "top-level-create"
+    },
+    "mvp.tokenB": {
+      "artifact": "LQCTestToken",
+      "abiVersion": "mvp.LQCTestToken-0.8.30-v1",
+      "chainId": 917001,
+      "address": null,
+      "transactionHash": null,
+      "runtimeBytecodeSha256": null,
+      "status": "unconfigured",
+      "creationKind": "top-level-create"
+    },
+    "mvp.wrappedNative": {
+      "artifact": "MockWBNB",
+      "abiVersion": "mvp.MockWBNB-0.8.30-v1",
+      "chainId": 917001,
+      "address": null,
+      "transactionHash": null,
+      "runtimeBytecodeSha256": null,
+      "status": "unconfigured",
+      "creationKind": "top-level-create"
+    },
+    "mvp.factory": {
+      "artifact": "LQCFlowFactory",
+      "abiVersion": "mvp.LQCFlowFactory-0.8.30-v1",
+      "chainId": 917001,
+      "address": null,
+      "transactionHash": null,
+      "runtimeBytecodeSha256": null,
+      "status": "unconfigured",
+      "creationKind": "top-level-create"
+    },
+    "mvp.pair": {
+      "artifact": "LQCFlowPair",
+      "abiVersion": "mvp.LQCFlowPair-0.8.30-v1",
+      "chainId": 917001,
+      "address": null,
+      "transactionHash": null,
+      "runtimeBytecodeSha256": null,
+      "status": "unconfigured",
+      "creationKind": "factory-internal-create"
+    },
+    "mvp.pairNative": {
+      "artifact": "LQCFlowPair",
+      "abiVersion": "mvp.LQCFlowPair-0.8.30-v1",
+      "chainId": 917001,
+      "address": null,
+      "transactionHash": null,
+      "runtimeBytecodeSha256": null,
+      "status": "unconfigured",
+      "creationKind": "factory-internal-create"
+    },
+    "mvp.router": {
+      "artifact": "LQCFlowRouter",
+      "abiVersion": "mvp.LQCFlowRouter-0.8.30-min-guard-v1",
+      "chainId": 917001,
+      "address": null,
+      "transactionHash": null,
+      "runtimeBytecodeSha256": null,
+      "status": "unconfigured",
+      "creationKind": "top-level-create"
+    }
+  }
+}
