@@ -1,0 +1,10 @@
+{
+  "adapter.go.txt": {
+    "source": "/home/user/lqc-work/head-etcd-adapter-20261114-195545-4qvvxlpk/source/adapter.go",
+    "sha256": "2fd740e4a9db37a7c9874a7d8d04af35e0b9609b2c462ed537da6d9f02a27d7e"
+  },
+  "api_probe.go.txt": {
+    "source": "/home/user/lqc-work/head-etcd-deps-20261114-194440-weuvvx7y/source/api_probe.go",
+    "sha256": "b6c7e5f4032cbca6e9717ed566a5e4ff10dec51549bc06b21948e76ccdd889cd"
+  }
+}

@@ -1,0 +1,446 @@
+// SPDX-License-Identifier: Apache-2.0
+// Package node implements an isolated SDK transport, never a signer authority.
+package node
+
+import (
+	"bytes"
+	"context"
+	"encoding/json"
+	"errors"
+	"fmt"
+	"strings"
+	"sync"
+
+	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
+	clientv3 "go.etcd.io/etcd/client/v3"
+	"google.golang.org/protobuf/proto"
+)
+
+var (
+	ErrAdapterInvalid   = errors.New("invalid adapter request or response")
+	ErrAdapterConflict  = errors.New("CAS conflict or different request contents")
+	ErrAdapterUncertain = errors.New("outcome uncertain: inspection only, no resubmit")
+	ErrAdapterFaulted   = errors.New("adapter faulted: no automatic recovery")
+	ErrAdapterAttempted = errors.New("operation already attempted: lookup only")
+)
+
+// Existing BuildHeadEtcdTxn/ValidateHeadEtcdPlan and authenticated v2 verification
+// remain the caller's responsibility. No no-op/default verifier is supplied.
+// In the original node package pass ValidateHeadEtcdPlan, without modification.
+type HeadPlanVerifier func(HeadEtcdScope, HeadEtcdTxn) error
+
+type SDKHeadAdapter struct {
+	mu        sync.Mutex
+	kv        clientv3.KV
+	scope     HeadEtcdScope
+	root      string
+	verify    HeadPlanVerifier
+	minimum   int64
+	attempted map[string][]byte
+	faulted   bool
+}
+
+var _ HeadEtcdTransportContract = (*SDKHeadAdapter)(nil)
+
+// kv must come from a separately reviewed TLS/RBAC client. This constructor
+// neither dials nor treats an injected KV or a cluster ID as authentication.
+func NewSDKHeadAdapter(kv clientv3.KV, s HeadEtcdScope, verify HeadPlanVerifier) (*SDKHeadAdapter, error) {
+	if kv == nil || verify == nil {
+		return nil, ErrAdapterInvalid
+	}
+	root, e := HeadEtcdRoot(s)
+	if e != nil {
+		return nil, e
+	}
+	return &SDKHeadAdapter{kv: kv, scope: s, root: root, verify: verify, attempted: make(map[string][]byte)}, nil
+}
+
+func (a *SDKHeadAdapter) validKey(k string) bool {
+	if k == a.root+"binding" || k == a.root+"head" {
+		return true
+	}
+	tail := strings.TrimPrefix(k, a.root)
+	if tail == k {
+		return false
+	}
+	parts := strings.Split(tail, "/")
+	if len(parts) == 2 && parts[0] == "operations" {
+		return journalHex(parts[1], 16)
+	}
+	return len(parts) == 3 && parts[0] == "requests" && journalHex(parts[1], 16) && (parts[2] == "claim" || parts[2] == "INTENT" || parts[2] == "COMPLETE")
+}
+
+func (a *SDKHeadAdapter) header(h *pb.ResponseHeader) error {
+	if h == nil || h.Revision <= 0 || h.Revision < a.minimum || fmt.Sprintf("%016x", h.ClusterId) != a.scope.ClusterID {
+		return ErrAdapterInvalid
+	}
+	a.minimum = h.Revision
+	return nil
+}
+
+// Multi-key read-only Txn gives one response snapshot. No serializable,
+// historical, cache, prefix, lease, or failure-write fallback is used.
+func (a *SDKHeadAdapter) RangeCurrent(ctx context.Context, s HeadEtcdScope, keys []string) (HeadEtcdRead, error) {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	var out HeadEtcdRead
+	if s != a.scope || len(keys) < 2 || len(keys) > 8 {
+		return out, ErrAdapterInvalid
+	}
+	seen := map[string]bool{}
+	ops := make([]clientv3.Op, 0, len(keys))
+	for _, k := range keys {
+		if !a.validKey(k) || seen[k] {
+			return out, ErrAdapterInvalid
+		}
+		seen[k] = true
+		ops = append(ops, clientv3.OpGet(k))
+	}
+	if !seen[a.root+"binding"] || !seen[a.root+"head"] {
+		return out, ErrAdapterInvalid
+	}
+	r, e := a.kv.Txn(ctx).Then(ops...).Commit()
+	if e != nil {
+		return out, e
+	}
+	if r == nil || !r.Succeeded || len(r.Responses) != len(keys) {
+		return out, ErrAdapterInvalid
+	}
+	if e = a.header(r.Header); e != nil {
+		return out, e
+	}
+	out = HeadEtcdRead{ClusterID: s.ClusterID, HeaderRevision: r.Header.Revision}
+	var size int
+	for i, op := range r.Responses {
+		if op == nil {
+			return HeadEtcdRead{}, ErrAdapterInvalid
+		}
+		rr := op.GetResponseRange()
+		if rr == nil || rr.More || rr.Count != int64(len(rr.Kvs)) || len(rr.Kvs) > 1 {
+			return HeadEtcdRead{}, ErrAdapterInvalid
+		}
+		if rr.Header != nil && (rr.Header.Revision != r.Header.Revision || rr.Header.ClusterId != r.Header.ClusterId) {
+			return HeadEtcdRead{}, ErrAdapterInvalid
+		}
+		for _, kv := range rr.Kvs {
+			if kv == nil || string(kv.Key) != keys[i] || kv.Lease != 0 || kv.Version <= 0 || kv.CreateRevision <= 0 || kv.ModRevision < kv.CreateRevision || kv.ModRevision > r.Header.Revision {
+				return HeadEtcdRead{}, ErrAdapterInvalid
+			}
+			size += len(kv.Key) + len(kv.Value)
+			if size > s.MaxTxnBytes {
+				return HeadEtcdRead{}, ErrAdapterInvalid
+			}
+			out.KVs = append(out.KVs, HeadEtcdKV{Key: string(kv.Key), Value: bytes.Clone(kv.Value), CreateRevision: kv.CreateRevision, ModRevision: kv.ModRevision, Version: kv.Version})
+		}
+	}
+	binding, _ := headEtcdBindingBytes(s)
+	b, ok := headEtcdGet(out, a.root+"binding")
+	if !ok || !bytes.Equal(b.Value, binding) {
+		return HeadEtcdRead{}, ErrAdapterInvalid
+	}
+	if _, ok = headEtcdGet(out, a.root+"head"); !ok {
+		return HeadEtcdRead{}, ErrAdapterInvalid
+	}
+	return out, nil
+}
+
+func clonePlan(p HeadEtcdTxn) HeadEtcdTxn {
+	q := HeadEtcdTxn{Root: p.Root}
+	for _, c := range p.Compare {
+		c.Value = bytes.Clone(c.Value)
+		q.Compare = append(q.Compare, c)
+	}
+	for _, v := range p.Put {
+		v.Value = bytes.Clone(v.Value)
+		q.Put = append(q.Put, v)
+	}
+	return q
+}
+
+// Verifies transport shape in addition to the REQUIRED contract validator.
+// Receipt signatures and semantic HRS/epoch checks are NOT reimplemented here.
+func (a *SDKHeadAdapter) plan(p HeadEtcdTxn) (string, []clientv3.Cmp, []clientv3.Op, error) {
+	if e := a.verify(a.scope, p); e != nil {
+		return "", nil, nil, e
+	}
+	if p.Root != a.root || len(p.Compare) < 4 || len(p.Put) < 2 || len(p.Compare) > 16 || len(p.Put) > 4 {
+		return "", nil, nil, ErrAdapterInvalid
+	}
+	cmps := []clientv3.Cmp{}
+	ops := []clientv3.Op{}
+	seen := map[string]bool{}
+	putKeys := map[string]bool{}
+	var opid string
+	for _, put := range p.Put {
+		if !a.validKey(put.Key) || put.Key == a.root+"binding" || put.Lease != 0 || putKeys[put.Key] {
+			return "", nil, nil, ErrAdapterInvalid
+		}
+		putKeys[put.Key] = true
+		if strings.HasPrefix(put.Key, a.root+"operations/") {
+			if opid != "" {
+				return "", nil, nil, ErrAdapterInvalid
+			}
+			opid = strings.TrimPrefix(put.Key, a.root+"operations/")
+		}
+		ops = append(ops, clientv3.OpPut(put.Key, string(put.Value)))
+	}
+	if opid == "" || !putKeys[a.root+"head"] {
+		return "", nil, nil, ErrAdapterInvalid
+	}
+	for _, c := range p.Compare {
+		tag := c.Key + "\x00" + c.Target
+		if !a.validKey(c.Key) || seen[tag] {
+			return "", nil, nil, ErrAdapterInvalid
+		}
+		seen[tag] = true
+		switch c.Target {
+		case "VALUE":
+			if c.Number != 0 {
+				return "", nil, nil, ErrAdapterInvalid
+			}
+			cmps = append(cmps, clientv3.Compare(clientv3.Value(c.Key), "=", string(c.Value)))
+		case "MOD":
+			if c.Number <= 0 || len(c.Value) != 0 {
+				return "", nil, nil, ErrAdapterInvalid
+			}
+			cmps = append(cmps, clientv3.Compare(clientv3.ModRevision(c.Key), "=", c.Number))
+		case "VERSION":
+			if c.Number != 0 || len(c.Value) != 0 {
+				return "", nil, nil, ErrAdapterInvalid
+			}
+			cmps = append(cmps, clientv3.Compare(clientv3.Version(c.Key), "=", int64(0)))
+		default:
+			return "", nil, nil, ErrAdapterInvalid
+		}
+	}
+	for _, tag := range []string{a.root + "binding\x00VALUE", a.root + "head\x00VALUE", a.root + "head\x00MOD", a.root + "operations/" + opid + "\x00VERSION"} {
+		if !seen[tag] {
+			return "", nil, nil, ErrAdapterInvalid
+		}
+	}
+	for _, put := range p.Put {
+		if strings.HasPrefix(put.Key, a.root+"requests/") && !strings.HasSuffix(put.Key, "/claim") && !seen[put.Key+"\x00VERSION"] {
+			return "", nil, nil, ErrAdapterInvalid
+		}
+		if strings.HasSuffix(put.Key, "/claim") && !seen[put.Key+"\x00VERSION"] {
+			return "", nil, nil, ErrAdapterInvalid
+		}
+	}
+	// Actual protobuf request size and operation count, not just JSON estimate.
+	req := &pb.TxnRequest{}
+	for i := range cmps {
+		req.Compare = append(req.Compare, cmps[i].GetCompare())
+	}
+	for _, p := range p.Put {
+		req.Success = append(req.Success, &pb.RequestOp{Request: &pb.RequestOp_RequestPut{RequestPut: &pb.PutRequest{Key: []byte(p.Key), Value: p.Value}}})
+	}
+	if proto.Size(req) > a.scope.MaxTxnBytes {
+		return "", nil, nil, ErrAdapterInvalid
+	}
+	return opid, cmps, ops, nil
+}
+
+// One Commit at most per operation. An ambiguous write permanently faults this
+// instance for further writes; no API resets that state. Reconcile stays read-only.
+func (a *SDKHeadAdapter) Txn(ctx context.Context, s HeadEtcdScope, input HeadEtcdTxn) (HeadEtcdTxnResult, error) {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	var out HeadEtcdTxnResult
+	if s != a.scope {
+		return out, ErrAdapterInvalid
+	}
+	p := clonePlan(input)
+	id, cmps, ops, e := a.plan(p)
+	if e != nil {
+		return out, e
+	}
+	encoded, _ := json.Marshal(p)
+	if prev, ok := a.attempted[id]; ok {
+		if !bytes.Equal(prev, encoded) {
+			return out, ErrAdapterConflict
+		}
+		return out, ErrAdapterAttempted
+	}
+	if a.faulted {
+		return out, ErrAdapterFaulted
+	}
+	if e = ctx.Err(); e != nil {
+		return out, e
+	}
+	a.attempted[id] = encoded
+	r, e := a.kv.Txn(ctx).If(cmps...).Then(ops...).Commit()
+	if e != nil {
+		a.faulted = true
+		return out, fmt.Errorf("%w: %v", ErrAdapterUncertain, e)
+	}
+	if r == nil || a.header(r.Header) != nil {
+		a.faulted = true
+		return out, ErrAdapterUncertain
+	}
+	if !r.Succeeded {
+		if len(r.Responses) != 0 {
+			a.faulted = true
+			return out, ErrAdapterUncertain
+		}
+		return HeadEtcdTxnResult{Succeeded: false, HeaderRevision: r.Header.Revision, ClusterID: s.ClusterID}, nil
+	}
+	if len(r.Responses) != len(p.Put) {
+		a.faulted = true
+		return out, ErrAdapterUncertain
+	}
+	for _, v := range r.Responses {
+		if v == nil || v.GetResponsePut() == nil {
+			a.faulted = true
+			return out, ErrAdapterUncertain
+		}
+	}
+	return HeadEtcdTxnResult{Succeeded: true, HeaderRevision: r.Header.Revision, ClusterID: s.ClusterID}, nil
+}
+
+type HeadAdapterOutcome struct {
+	Status                 string
+	Confirmed              bool
+	Read                   HeadEtcdRead
+	AllowSigning           bool `json:"allow_signing"`
+	RecoveryAuthorized     bool `json:"recovery_authorized"`
+	SigningHistoryComplete bool `json:"signing_history_complete"`
+}
+
+// A matching immutable receipt is historical evidence, not latestness or signing
+// permission. If Head advanced, this deliberately returns an error and history-only
+// status; it does not infer a valid descendant or authorize replay/recovery.
+func (a *SDKHeadAdapter) Reconcile(ctx context.Context, input HeadEtcdTxn) (HeadAdapterOutcome, error) {
+	p := clonePlan(input)
+	a.mu.Lock()
+	_, _, _, e := a.plan(p)
+	a.mu.Unlock()
+	if e != nil {
+		return HeadAdapterOutcome{Status: "invalid-plan"}, e
+	}
+	keys := []string{a.root + "binding", a.root + "head"}
+	for _, v := range p.Put {
+		if v.Key != a.root+"head" {
+			keys = append(keys, v.Key)
+		}
+	}
+	for _, c := range p.Compare {
+		if strings.HasSuffix(c.Key, "/claim") {
+			found := false
+			for _, k := range keys {
+				if k == c.Key {
+					found = true
+				}
+			}
+			if !found {
+				keys = append(keys, c.Key)
+			}
+		}
+	}
+	r, e := a.RangeCurrent(ctx, a.scope, keys)
+	out := HeadAdapterOutcome{Status: "unresolved", Read: r}
+	if e != nil {
+		return out, fmt.Errorf("%w: %v", ErrAdapterUncertain, e)
+	}
+	count, total := 0, 0
+	for _, v := range p.Put {
+		if v.Key == a.root+"head" {
+			continue
+		}
+		total++
+		if kv, ok := headEtcdGet(r, v.Key); ok {
+			count++
+			if !bytes.Equal(kv.Value, v.Value) {
+				out.Status = "request-content-conflict"
+				return out, ErrAdapterConflict
+			}
+		}
+	}
+	if count < total {
+		if count != 0 {
+			out.Status = "incomplete-receipt-set"
+			return out, ErrAdapterUncertain
+		}
+		head, _ := headEtcdGet(r, a.root+"head")
+		for _, c := range p.Compare {
+			if c.Key == a.root+"head" && ((c.Target == "VALUE" && !bytes.Equal(head.Value, c.Value)) || (c.Target == "MOD" && head.ModRevision != c.Number)) {
+				out.Status = "head-conflict"
+				return out, ErrAdapterConflict
+			}
+		}
+		return out, ErrAdapterUncertain
+	}
+	var revision int64
+	for _, v := range p.Put {
+		if v.Key == a.root+"head" {
+			continue
+		}
+		kv, ok := headEtcdGet(r, v.Key)
+		if !ok {
+			return out, ErrAdapterUncertain
+		}
+		if !bytes.Equal(kv.Value, v.Value) {
+			out.Status = "request-content-conflict"
+			return out, ErrAdapterConflict
+		}
+		if revision == 0 {
+			revision = kv.ModRevision
+		}
+		if kv.ModRevision != revision || kv.CreateRevision != kv.ModRevision || kv.Version != 1 {
+			out.Status = "incomplete-or-rewritten-receipt"
+			return out, ErrAdapterUncertain
+		}
+	}
+	for _, c := range p.Compare {
+		if strings.HasSuffix(c.Key, "/claim") {
+			kv, ok := headEtcdGet(r, c.Key)
+			if !ok || (c.Target == "VALUE" && !bytes.Equal(kv.Value, c.Value)) || (c.Target == "MOD" && kv.ModRevision != c.Number) {
+				out.Status = "claim-mismatch"
+				return out, ErrAdapterUncertain
+			}
+		}
+	}
+	head, _ := headEtcdGet(r, a.root+"head")
+	for _, v := range p.Put {
+		if v.Key == a.root+"head" && (!bytes.Equal(head.Value, v.Value) || head.ModRevision != revision) {
+			out.Status = "historical-receipt-head-differs"
+			return out, ErrAdapterUncertain
+		}
+	}
+	out.Status = "confirmed-head-and-receipts"
+	out.Confirmed = true
+	return out, nil
+}
+
+// lookupCtx must be caller-supplied and bounded, independent of an expired write
+// context if necessary. This function never changes Expected or resubmits a CAS.
+func (a *SDKHeadAdapter) Apply(ctx, lookupCtx context.Context, p HeadEtcdTxn) (HeadAdapterOutcome, error) {
+	// Lookup first: an existing same request returns evidence without any CAS.
+	existing, e := a.Reconcile(lookupCtx, p)
+	if e == nil {
+		return existing, nil
+	}
+	if errors.Is(e, ErrAdapterConflict) {
+		return existing, e
+	}
+	// A missing receipt alone is not a general retry grant. Txn permits only a
+	// first attempt in this instance; durable cross-restart submission gating is
+	// an external service requirement, not implemented by this transport.
+	if existing.Status != "unresolved" {
+		return existing, e
+	}
+	if existing.Read.HeaderRevision == 0 {
+		return existing, e
+	}
+	result, writeErr := a.Txn(ctx, a.scope, p)
+	if writeErr != nil || !result.Succeeded {
+		observed, readErr := a.Reconcile(lookupCtx, p)
+		if readErr == nil {
+			return observed, nil
+		}
+		if writeErr != nil {
+			return observed, writeErr
+		}
+		return observed, ErrAdapterConflict
+	}
+	return a.Reconcile(lookupCtx, p)
+}

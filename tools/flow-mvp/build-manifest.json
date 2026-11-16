@@ -1,0 +1,60 @@
+{
+  "compiler": "0.8.30+commit.73712a01",
+  "compilerSha256": "f3e987dc6ecebd4bd350c48edcbc320b46cf9e3109bd3fc3d88f1acaf4c428f7",
+  "flowCommit": "013d159f05ed6a924ee965ec41ef193a069da122",
+  "productionApproved": false,
+  "settings": {
+    "optimizer": {
+      "enabled": true,
+      "runs": 200
+    },
+    "viaIR": true,
+    "evmVersion": "shanghai"
+  },
+  "sources": {
+    "contracts/LQCFlowFactory.sol": "448249b8adc116b3ecaa4282fd63c911dda7ef7f6f0842781b9eb7dfe80369ed",
+    "contracts/LQCFlowPair.sol": "ae52eb82ca041c12cdc43eb078e783802515a1d8db2d591c752f5ecd416202a3",
+    "contracts/testnet/LQCTestToken.sol": "48c81cddc8c6465f687aa62b99efd96d4c22bdf4035b4b24621cb93766579a2a",
+    "contracts/mocks/MockWBNB.sol": "3e2e2e79284825a456dc928aac4da823534ccb827f300d3fdf52d031e2ffd408",
+    "contracts/interfaces/IERC20.sol": "7d1fa868fedcbf3a81515d8a223fce97947457897083fc3318c591d94062baa1",
+    "contracts/interfaces/ILQCFlowFactory.sol": "e4cb5f47705b913af03ae21868021a00c99c0a73671990cca8433a125d6662cc",
+    "contracts/interfaces/ILQCFlowPair.sol": "0ddd7b0dc011fc96647c7601fda295c61462ade856d6bba6d7743aac5b639a6b",
+    "contracts/interfaces/IWBNB.sol": "d618910cbaadb8b3135cc7e2e9f2a68bbe7e184da7a44f8d39b28b4d285e6849",
+    "contracts/libraries/Math.sol": "2a9526712ea0bb2e38a1e716445655c2d75c49a5bec0e59e0d1822d7a50c3508",
+    "contracts/libraries/SafeTransferLib.sol": "7ceaef5d4af5e15c8d70e555c2baa3b2a5f878f2567691492c6a00afff4dd464",
+    "contracts/LQCFlowRouter.sol": "60e01060fd669e9aa9a2af27fac6202fd8a1c7b23ad0c3e1ba40d233a94b675a"
+  },
+  "inputSha256": "889b4113101e912abd59a898344d1a16f2f0c4c431085f4301aa39c37f7ef680",
+  "artifacts": {
+    "LQCFlowFactory": {
+      "artifactSha256": "0efc32711f726f3220194b0c063c20b5e7a1320696b99b7ef4429018c7522241",
+      "abiSha256": "73195d3c9124503a70a215e212b94ec41fd5bb33a73049820e4ddb76dfa988b2",
+      "creationSha256": "9c86346541acd7c25df0981b9f4518b087b5d6022eda4a59d859d6741d00748f",
+      "runtimeTemplateSha256": "d7ef386b20797990d3c7e33293909f60aab6a8e7b11832379eefba3b1d24ea4e"
+    },
+    "LQCFlowPair": {
+      "artifactSha256": "62ab4167f3f91c0443f1c086c9d0e64d008ed8faa844f8da40bf2dfb8cd2c9d8",
+      "abiSha256": "fb679f891b5271e3271776db737103d9be32674539717dea0a1abdf2f5f575b9",
+      "creationSha256": "9d65c3761bd6a1bf6f6c48d303d36e96c7759b877e8e9b6a670b00969a5a3381",
+      "runtimeTemplateSha256": "4b4bfee2c4b78b1589a1c50a33e7a75d6efaede36925898e0026fc18cfe390f1"
+    },
+    "LQCFlowRouter": {
+      "artifactSha256": "ec3a8cf45516ceda8e0dc1875f6781be8d27a1152f3722d180b5a081e5dac827",
+      "abiSha256": "d2dc6988ec7fb73b7332cf5d349a6407179a0b62880b5afac1a43a7c389414bb",
+      "creationSha256": "dcde4a48706399026c0195232182341b02ea64dcb8aaf0ca9acf22ce976947db",
+      "runtimeTemplateSha256": "352c6281577e861d6d892396d5b455ff9b2f5707665a9bbb2d12b3d86a103e27"
+    },
+    "MockWBNB": {
+      "artifactSha256": "b29a363fa2fcc36cad7841dded74fd29a9178061d943c40f23a156c765c7113e",
+      "abiSha256": "859727db7d84ec99f0fbcc692e7e70c7d20784c5d6d6fdc4d46e14f07f4dd83e",
+      "creationSha256": "18156daa534feb926799128e9c9a4b7ba1a2309b0d00a84384b08bc12170e885",
+      "runtimeTemplateSha256": "65c87fa4318c7ac9abbfd0accd7f2fea2897822a5aae47d9fb3e475a825ce1f0"
+    },
+    "LQCTestToken": {
+      "artifactSha256": "3039c5c95792d5b93a84d3771a62b5585626350488478396aee2e1257ed256b0",
+      "abiSha256": "0da1384125688acf50b06566039378511cbb7048e2090bb894d874ba5834c845",
+      "creationSha256": "96a3710b89d84e6c552f7646f60752228fa86e331199660ecb3b1e43da580f89",
+      "runtimeTemplateSha256": "28a7c7a0aafcb0b42a228d2877906f955195e10a9a4e69fe2e118b3022fe22bd"
+    }
+  }
+}

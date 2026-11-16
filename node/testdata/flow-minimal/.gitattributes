@@ -1,0 +1,3 @@
+# Preserve exact pinned source and compiled artifact bytes across platforms.
+*.sol text eol=lf
+*.json text eol=lf

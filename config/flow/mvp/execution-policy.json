@@ -1,0 +1,67 @@
+{
+  "CosmosChainID": "lqc-devnet-test-1",
+  "EVMChainID": 917001,
+  "EVMChainIDHex": "0xdfe09",
+  "GenesisTotal": "100000000000000000000",
+  "Allocations": [
+    {
+      "Role": "deployer",
+      "Amount": "30000000000000000000"
+    },
+    {
+      "Role": "test",
+      "Amount": "20000000000000000000"
+    },
+    {
+      "Role": "reserve",
+      "Amount": "50000000000000000000"
+    }
+  ],
+  "Accounts": [
+    {
+      "Role": "deployer",
+      "Creation": "new-per-run",
+      "Address": null,
+      "KeyPath": null
+    },
+    {
+      "Role": "test",
+      "Creation": "new-per-run",
+      "Address": null,
+      "KeyPath": null
+    },
+    {
+      "Role": "reserve",
+      "Creation": "new-per-run",
+      "Address": null,
+      "KeyPath": null
+    }
+  ],
+  "MintACap": "1000000000000000000000",
+  "MintBCap": "1000000000",
+  "WrapperDepositCap": "10000000000000000000",
+  "ValidatorBond": "1000000000000000000",
+  "BondSource": "deployer",
+  "MaxGasPerTx": 5000000,
+  "MaxFeePerGas": "2000000000",
+  "MaxTransactions": 64,
+  "TotalSeconds": 240,
+  "StepSeconds": 20,
+  "CleanupReserveSeconds": 50,
+  "CloseSeconds": 5,
+  "ChildTermGraceMS": 1000,
+  "EvidenceSeconds": 2,
+  "NewRunParent": "/tmp",
+  "ExistingHomes": [
+    "/tmp/lqc-core244.Subgcwz4/home",
+    "/home/user/lqc-validation/stage7-mvp-l6oes0h0"
+  ],
+  "ExistingKeyPaths": [
+    "/tmp/lqc-core244.Subgcwz4/home/config/priv_validator_key.json"
+  ],
+  "ExistingAccounts": [],
+  "AllowNode": false,
+  "AllowDeploy": false,
+  "AllowMint": false,
+  "AllowTransactions": false
+}

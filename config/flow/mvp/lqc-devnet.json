@@ -1,0 +1,71 @@
+{
+  "schemaVersion": 1,
+  "profile": "lqc-devnet-mvp",
+  "deploymentEnabled": false,
+  "transactionsEnabled": false,
+  "network": {
+    "chainId": 917001,
+    "chainIdHex": "0xdfe09",
+    "cosmosChainId": "lqc-devnet-test-1",
+    "bech32Prefix": "lqctest",
+    "baseDenom": "atest",
+    "displayDenom": "test",
+    "decimals": 18,
+    "rpcUrls": [
+      "http://127.0.0.1:8545"
+    ],
+    "allowedOrigins": [
+      "http://localhost:3000"
+    ]
+  },
+  "source": {
+    "coreCommit": "b79394246a8819a7651275bd07c88b83bccdd8df",
+    "flowCommit": "013d159f05ed6a924ee965ec41ef193a069da122",
+    "overlayArchiveSha256": "b24bfb2000eaf3510a6e0b49ab30a0a2de74a4969337b3355886f2faa49032dd",
+    "candidateState": "draft-unmerged",
+    "productionApproved": false
+  },
+  "assets": {
+    "native": {
+      "kind": "native",
+      "address": null,
+      "decimals": 18,
+      "denom": "atest"
+    },
+    "tokenA": {
+      "kind": "test-erc20",
+      "address": null,
+      "decimals": 18,
+      "contractRef": "mvp.tokenA"
+    },
+    "tokenB": {
+      "kind": "test-erc20",
+      "address": null,
+      "decimals": 6,
+      "contractRef": "mvp.tokenB"
+    },
+    "wrappedNative": {
+      "kind": "test-wrapped-native",
+      "address": null,
+      "decimals": 18,
+      "contractRef": "mvp.wrappedNative",
+      "canonical": false
+    }
+  },
+  "wrappedNative": {
+    "artifact": "MockWBNB",
+    "canonical": false,
+    "onChainSymbol": "WBNB",
+    "displayAlias": "Wrapped TEST (test-only)"
+  },
+  "dependencies": {
+    "pancakeLookup": false,
+    "bscAddressReuse": false,
+    "externalRpc": false
+  },
+  "limits": {
+    "gasCap": 10000000,
+    "simulationTimeoutMs": 2000,
+    "nodeLifetimeSeconds": 240
+  }
+}

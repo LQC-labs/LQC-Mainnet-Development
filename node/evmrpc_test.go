@@ -168,7 +168,35 @@ func TestEVMRPCRuntimeChild(t *testing.T) {
 			listener.Close()
 		}
 	}()
+	// Diagnostic observations only: no additional HTTP requests, waits, or
+	// changes to the existing assertions or timeout values.
+	diagEpoch := time.Now()
+	heightDiag := func(event string, fields map[string]interface{}) {
+		fields["event"] = event
+		fields["phase"] = stage
+		fields["pid"] = os.Getpid()
+		fields["logged_at_utc"] = time.Now().UTC().Format(time.RFC3339Nano)
+		fields["logged_elapsed_ns"] = time.Since(diagEpoch).Nanoseconds()
+		encoded, diagErr := json.Marshal(fields)
+		if diagErr != nil {
+			fmt.Printf("HEIGHT_DIAG_ENCODING_ERROR phase=%s error=%v\n", stage, diagErr)
+			return
+		}
+		fmt.Printf("HEIGHT_DIAG %s\n", encoded)
+	}
+	diagErrorText := func(err error) string {
+		if err == nil {
+			return ""
+		}
+		return err.Error()
+	}
+	previousReadStart := time.Now()
 	previousHeight := n.application.SDK.LastBlockHeight()
+	previousReadEnd := time.Now()
+	heightDiag("sdk_before_start", map[string]interface{}{
+		"sdk": previousHeight, "read_start": previousReadStart.UTC().Format(time.RFC3339Nano),
+		"read_end": previousReadEnd.UTC().Format(time.RFC3339Nano),
+	})
 	if err = n.Start(ctx); err != nil {
 		t.Fatal(err)
 	}
@@ -192,42 +220,132 @@ func TestEVMRPCRuntimeChild(t *testing.T) {
 	fmt.Printf("RPC_LISTENER=%s phase=%s previous_height=%d\n", rpcAddress, stage, previousHeight)
 	client := &http.Client{Timeout: 4 * time.Second}
 	defer client.CloseIdleConnections()
-	// Wait for the first actual committed block; queries before InitChain/Commit
-	// are allowed to report not-ready rather than returning synthetic state.
+	// Preserve the first Comet target, then require the SDK to commit it.
+	// Block-store progress alone does not establish application readiness.
+	// Reuse the existing context deadline and polling cadence below.
 	var first int64
 	for {
 		if ctx.Err() != nil {
 			t.Fatal(ctx.Err())
 		}
-		status, err := client.Get("http://127.0.0.1:26657/status")
-		if err == nil {
-			var body struct {
-				Result struct {
-					Sync struct {
-						Height string `json:"latest_block_height"`
-					} `json:"sync_info"`
-				} `json:"result"`
+		if first == 0 {
+			readySDKBeforeStart := time.Now()
+			readySDKBefore := n.application.SDK.LastBlockHeight()
+			readySDKBeforeEnd := time.Now()
+			readyRequestStart := time.Now()
+			status, err := client.Get("http://127.0.0.1:26657/status")
+			readyHeadersAt := time.Now()
+			if err != nil {
+				heightDiag("comet_ready_transport_error", map[string]interface{}{
+					"error": err.Error(), "request_start": readyRequestStart.UTC().Format(time.RFC3339Nano),
+					"request_end": readyHeadersAt.UTC().Format(time.RFC3339Nano),
+				})
 			}
-			json.NewDecoder(status.Body).Decode(&body)
-			status.Body.Close()
-			h, _ := strconv.ParseInt(body.Result.Sync.Height, 10, 64)
-			if h > previousHeight {
-				first = h
+			if err == nil {
+				var body struct {
+					Result struct {
+						Sync struct {
+							Height string `json:"latest_block_height"`
+						} `json:"sync_info"`
+					} `json:"result"`
+				}
+				readyDecodeErr := json.NewDecoder(status.Body).Decode(&body)
+				status.Body.Close()
+				h, readyParseErr := strconv.ParseInt(body.Result.Sync.Height, 10, 64)
+				readyBodyDone := time.Now()
+				readySDKAfterStart := time.Now()
+				readySDKAfter := n.application.SDK.LastBlockHeight()
+				readySDKAfterEnd := time.Now()
+				heightDiag("comet_ready_sample", map[string]interface{}{
+					"previous_height": previousHeight, "comet_height": h, "comet_height_raw": body.Result.Sync.Height,
+					"selected": h > previousHeight, "sdk_before": readySDKBefore, "sdk_after": readySDKAfter,
+					"request_start":         readyRequestStart.UTC().Format(time.RFC3339Nano),
+					"request_start_ns":      readyRequestStart.Sub(diagEpoch).Nanoseconds(),
+					"headers_received":      readyHeadersAt.UTC().Format(time.RFC3339Nano),
+					"body_complete":         readyBodyDone.UTC().Format(time.RFC3339Nano),
+					"sdk_before_read_start": readySDKBeforeStart.UTC().Format(time.RFC3339Nano),
+					"sdk_before_read_end":   readySDKBeforeEnd.UTC().Format(time.RFC3339Nano),
+					"sdk_after_read_start":  readySDKAfterStart.UTC().Format(time.RFC3339Nano),
+					"sdk_after_read_end":    readySDKAfterEnd.UTC().Format(time.RFC3339Nano),
+					"http_status":           status.StatusCode, "json_decode_error": diagErrorText(readyDecodeErr),
+					"height_parse_error": diagErrorText(readyParseErr),
+				})
+				if h > previousHeight {
+					first = h
+				}
+			}
+		}
+		if first > 0 {
+			commitReadStart := time.Now()
+			committedHeight := n.application.SDK.LastBlockHeight()
+			commitReadEnd := time.Now()
+			heightDiag("sdk_commit_gate", map[string]interface{}{
+				"first": first, "sdk_committed_height": committedHeight,
+				"ready":      committedHeight >= first,
+				"read_start": commitReadStart.UTC().Format(time.RFC3339Nano),
+				"read_end":   commitReadEnd.UTC().Format(time.RFC3339Nano),
+			})
+			if committedHeight >= first {
 				break
 			}
 		}
 		time.Sleep(50 * time.Millisecond)
 	}
+	chainSDKBeforeStart := time.Now()
+	chainSDKBefore := n.application.SDK.LastBlockHeight()
+	chainSDKBeforeEnd := time.Now()
+	chainCallStart := time.Now()
 	if value := evmRPCResult(t, client, rpcAddress, "eth_chainId", []interface{}{}); value != "0xdfe09" {
 		t.Fatalf("wrong chain ID %s", value)
 	}
+	chainCallEnd := time.Now()
+	chainSDKAfterStart := time.Now()
+	chainSDKAfter := n.application.SDK.LastBlockHeight()
+	chainSDKAfterEnd := time.Now()
+	heightDiag("evm_chain_id", map[string]interface{}{
+		"sdk_before": chainSDKBefore, "sdk_after": chainSDKAfter,
+		"request_start":         chainCallStart.UTC().Format(time.RFC3339Nano),
+		"request_end":           chainCallEnd.UTC().Format(time.RFC3339Nano),
+		"sdk_before_read_start": chainSDKBeforeStart.UTC().Format(time.RFC3339Nano),
+		"sdk_before_read_end":   chainSDKBeforeEnd.UTC().Format(time.RFC3339Nano),
+		"sdk_after_read_start":  chainSDKAfterStart.UTC().Format(time.RFC3339Nano),
+		"sdk_after_read_end":    chainSDKAfterEnd.UTC().Format(time.RFC3339Nano),
+	})
+	initialSDKBeforeStart := time.Now()
+	initialSDKBefore := n.application.SDK.LastBlockHeight()
+	initialSDKBeforeEnd := time.Now()
+	initialCallStart := time.Now()
 	h1 := rpcHexHeight(t, evmRPCResult(t, client, rpcAddress, "eth_blockNumber", []interface{}{}))
+	initialCallEnd := time.Now()
+	initialSDKAfterStart := time.Now()
+	initialSDKAfter := n.application.SDK.LastBlockHeight()
+	initialSDKAfterEnd := time.Now()
+	heightDiag("evm_initial_height", map[string]interface{}{
+		"comet_ready_height": first, "evm_height": h1,
+		"sdk_before": initialSDKBefore, "sdk_after": initialSDKAfter,
+		"request_start":                  initialCallStart.UTC().Format(time.RFC3339Nano),
+		"request_end":                    initialCallEnd.UTC().Format(time.RFC3339Nano),
+		"request_start_ns":               initialCallStart.Sub(diagEpoch).Nanoseconds(),
+		"request_end_ns":                 initialCallEnd.Sub(diagEpoch).Nanoseconds(),
+		"sdk_before_read_start":          initialSDKBeforeStart.UTC().Format(time.RFC3339Nano),
+		"sdk_before_read_end":            initialSDKBeforeEnd.UTC().Format(time.RFC3339Nano),
+		"sdk_after_read_start":           initialSDKAfterStart.UTC().Format(time.RFC3339Nano),
+		"sdk_after_read_end":             initialSDKAfterEnd.UTC().Format(time.RFC3339Nano),
+		"existing_comparison_would_fail": h1 < first,
+	})
 	if h1 < first {
 		t.Fatal("RPC behind committed height")
+	}
+	if h1 < initialSDKBefore || h1 > initialSDKAfter {
+		t.Fatalf("initial RPC height=%d SDK=[%d,%d] Comet target=%d", h1, initialSDKBefore, initialSDKAfter, first)
 	}
 	// Compare to both endpoints around the EVM query to tolerate a concurrent
 	// commit without pretending that two HTTP requests form an atomic snapshot.
 	cometHeight := func() int64 {
+		cometSDKBeforeStart := time.Now()
+		cometSDKBefore := n.application.SDK.LastBlockHeight()
+		cometSDKBeforeEnd := time.Now()
+		cometRequestStart := time.Now()
 		response, err := client.Get("http://127.0.0.1:26657/status")
 		if err != nil {
 			t.Fatal(err)
@@ -240,13 +358,29 @@ func TestEVMRPCRuntimeChild(t *testing.T) {
 				} `json:"sync_info"`
 			} `json:"result"`
 		}
-		if json.NewDecoder(response.Body).Decode(&body) != nil {
+		cometDecodeErr := json.NewDecoder(response.Body).Decode(&body)
+		if cometDecodeErr != nil {
+			heightDiag("comet_progress_json_error", map[string]interface{}{"error": cometDecodeErr.Error()})
 			t.Fatal("bad Comet status")
 		}
 		h, err := strconv.ParseInt(body.Result.Sync.Height, 10, 64)
 		if err != nil {
+			heightDiag("comet_progress_parse_error", map[string]interface{}{"error": err.Error(), "height_raw": body.Result.Sync.Height})
 			t.Fatal(err)
 		}
+		cometBodyDone := time.Now()
+		cometSDKAfterStart := time.Now()
+		cometSDKAfter := n.application.SDK.LastBlockHeight()
+		cometSDKAfterEnd := time.Now()
+		heightDiag("comet_progress_sample", map[string]interface{}{
+			"comet_height": h, "sdk_before": cometSDKBefore, "sdk_after": cometSDKAfter,
+			"request_start":         cometRequestStart.UTC().Format(time.RFC3339Nano),
+			"body_complete":         cometBodyDone.UTC().Format(time.RFC3339Nano),
+			"sdk_before_read_start": cometSDKBeforeStart.UTC().Format(time.RFC3339Nano),
+			"sdk_before_read_end":   cometSDKBeforeEnd.UTC().Format(time.RFC3339Nano),
+			"sdk_after_read_start":  cometSDKAfterStart.UTC().Format(time.RFC3339Nano),
+			"sdk_after_read_end":    cometSDKAfterEnd.UTC().Format(time.RFC3339Nano),
+		})
 		return h
 	}
 	target := int64(11)
@@ -261,10 +395,26 @@ func TestEVMRPCRuntimeChild(t *testing.T) {
 			t.Fatal(ctx.Err())
 		}
 		low := cometHeight()
+		loopSDKBeforeStart := time.Now()
 		sdkLow := n.application.SDK.LastBlockHeight()
+		loopSDKBeforeEnd := time.Now()
+		loopCallStart := time.Now()
 		h2 = rpcHexHeight(t, evmRPCResult(t, client, rpcAddress, "eth_blockNumber", []interface{}{}))
+		loopCallEnd := time.Now()
+		loopSDKAfterStart := time.Now()
 		sdkHigh := n.application.SDK.LastBlockHeight()
+		loopSDKAfterEnd := time.Now()
 		high := cometHeight()
+		heightDiag("evm_progress_height", map[string]interface{}{
+			"evm_height": h2, "sdk_before": sdkLow, "sdk_after": sdkHigh,
+			"comet_before": low, "comet_after": high,
+			"request_start":         loopCallStart.UTC().Format(time.RFC3339Nano),
+			"request_end":           loopCallEnd.UTC().Format(time.RFC3339Nano),
+			"sdk_before_read_start": loopSDKBeforeStart.UTC().Format(time.RFC3339Nano),
+			"sdk_before_read_end":   loopSDKBeforeEnd.UTC().Format(time.RFC3339Nano),
+			"sdk_after_read_start":  loopSDKAfterStart.UTC().Format(time.RFC3339Nano),
+			"sdk_after_read_end":    loopSDKAfterEnd.UTC().Format(time.RFC3339Nano),
+		})
 		// Comet saves a block before FinalizeBlock/Commit. Its status may therefore
 		// lead committed application state by one during a concurrent commit.
 		if h2 < sdkLow || h2 > sdkHigh || h2 < low-1 || h2 > high+1 {
