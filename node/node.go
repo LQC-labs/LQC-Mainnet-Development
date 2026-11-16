@@ -33,6 +33,7 @@ import (
 	cmtstate "github.com/cometbft/cometbft/state"
 	cmttypes "github.com/cometbft/cometbft/types"
 	sdked25519 "github.com/cosmos/cosmos-sdk/crypto/keys/ed25519"
+	cryptotypes "github.com/cosmos/cosmos-sdk/crypto/types"
 	sdkserver "github.com/cosmos/cosmos-sdk/server"
 	"golang.org/x/sys/unix"
 )
@@ -69,7 +70,11 @@ type nodeIdentity struct {
 
 // Open validates a prepared TEST home and opens its persistent application.
 // It NEVER calls NewNode, InitChain, Start, FinalizeBlock or Commit.
-func Open(home string) (result *Node, err error) {
+func Open(home string) (*Node, error) {
+	return openValidated(home, validateDevnetGenesis)
+}
+
+func openValidated(home string, validate func(*app.App, []byte, cryptotypes.PubKey) error) (result *Node, err error) {
 	fd, err := openDevnetHome(home)
 	if err != nil {
 		return nil, err
@@ -135,7 +140,7 @@ func Open(home string) (result *Node, err error) {
 	if err != nil {
 		return nil, err
 	}
-	if err = validateDevnetGenesis(n.application, raw, &sdked25519.PubKey{Key: n.validator.Key.PubKey.Bytes()}); err != nil {
+	if err = validate(n.application, raw, &sdked25519.PubKey{Key: n.validator.Key.PubKey.Bytes()}); err != nil {
 		return nil, err
 	}
 	// Exact-height checks apply to a clean normal shutdown. Recovery of an

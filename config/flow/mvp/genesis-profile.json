@@ -1,0 +1,39 @@
+{
+  "schemaVersion": 1,
+  "profile": "lqc-mvp-isolated-v1",
+  "enabled": false,
+  "cosmosChainId": "lqc-devnet-test-1",
+  "evmChainId": 917001,
+  "evmChainIdHex": "0xdfe09",
+  "denom": "atest",
+  "decimals": 18,
+  "total": "100000000000000000000",
+  "accounts": [
+    {
+      "role": "deployer",
+      "address": null,
+      "publicKeyHex": null,
+      "generatedRunId": null,
+      "amount": "30000000000000000000"
+    },
+    {
+      "role": "test",
+      "address": null,
+      "publicKeyHex": null,
+      "generatedRunId": null,
+      "amount": "20000000000000000000"
+    },
+    {
+      "role": "reserve",
+      "address": null,
+      "publicKeyHex": null,
+      "generatedRunId": null,
+      "amount": "50000000000000000000"
+    }
+  ],
+  "home": null,
+  "runId": null,
+  "bondFromDeployer": "1000000000000000000",
+  "requiresExplicitOptIn": true,
+  "productionApproved": false
+}

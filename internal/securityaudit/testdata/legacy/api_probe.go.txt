@@ -1,0 +1,23 @@
+// SPDX-License-Identifier: Apache-2.0
+// Offline API compilation probe only. No production adapter or authorization.
+package sdkprobe
+import (
+ "context"
+ clientv3 "go.etcd.io/etcd/client/v3"
+)
+// CommitProbe exercises the official builder. Caller is test-only in-memory KV.
+func CommitProbe(ctx context.Context, kv clientv3.KV, root string, old []byte, rev int64, next []byte) (*clientv3.TxnResponse,error) {
+ return kv.Txn(ctx).If(
+  clientv3.Compare(clientv3.Value(root+"binding"),"=","registered-binding"),
+  clientv3.Compare(clientv3.Value(root+"head"),"=",string(old)),
+  clientv3.Compare(clientv3.ModRevision(root+"head"),"=",rev),
+  clientv3.Compare(clientv3.Version(root+"operations/op-id"),"=",int64(0)),
+ ).Then(
+  clientv3.OpPut(root+"head",string(next)),
+  clientv3.OpPut(root+"operations/op-id","receipt-and-command"),
+  clientv3.OpPut(root+"requests/request-id/INTENT","request-index"),
+ ).Commit()
+}
+// This object requests current linearizable Range by default; no historical revision.
+func CurrentReadProbe(key string) clientv3.Op { return clientv3.OpGet(key) }
+type Decision struct { AllowSigning bool `json:"allow_signing"`; RecoveryAuthorized bool `json:"recovery_authorized"`; SigningHistoryComplete bool `json:"signing_history_complete"` }

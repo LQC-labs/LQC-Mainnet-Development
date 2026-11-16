@@ -21,6 +21,9 @@ import (
 )
 
 func TestGenesisDraft(t *testing.T) {
+	if runGenesisTestInSubprocess(t) {
+		return
+	}
 	a, err := app.New(log.NewNopLogger(), dbm.NewMemDB(), t.TempDir())
 	if err != nil {
 		t.Fatal(err)

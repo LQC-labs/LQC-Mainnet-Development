@@ -1,0 +1,134 @@
+{
+  "repository": "LQC-labs/LQC-Liquidity-chain",
+  "commit": "8db16368b3e09a94bfd500a17e33e3e9ef62ed51",
+  "compiler": "0.8.30",
+  "settings": {
+    "optimizer": {
+      "enabled": true,
+      "runs": 200
+    },
+    "viaIR": true,
+    "evmVersion": "shanghai"
+  },
+  "original_sources": {
+    "contracts/LQCFlowFactory.sol": {
+      "upstream_path": "dex/contracts/LQCFlowFactory.sol",
+      "gitBlobSha": "46abb48cf3e3d3a77264ec62526309f1317086fa",
+      "sha256": "448249b8adc116b3ecaa4282fd63c911dda7ef7f6f0842781b9eb7dfe80369ed",
+      "modified": false
+    },
+    "contracts/LQCFlowPair.sol": {
+      "upstream_path": "dex/contracts/LQCFlowPair.sol",
+      "gitBlobSha": "6fea2377781fe98bee2645de7ba43177c0b26489",
+      "sha256": "ae52eb82ca041c12cdc43eb078e783802515a1d8db2d591c752f5ecd416202a3",
+      "modified": false
+    },
+    "contracts/testnet/LQCTestToken.sol": {
+      "upstream_path": "dex/contracts/testnet/LQCTestToken.sol",
+      "gitBlobSha": "9e77bae08aec23318f1ac2a5ad21470842de4107",
+      "sha256": "48c81cddc8c6465f687aa62b99efd96d4c22bdf4035b4b24621cb93766579a2a",
+      "modified": false
+    },
+    "contracts/mocks/MockWBNB.sol": {
+      "upstream_path": "dex/contracts/mocks/MockWBNB.sol",
+      "gitBlobSha": "b1d74d6e46bd9971e5de3ccc0aa0ef098b139a39",
+      "sha256": "3e2e2e79284825a456dc928aac4da823534ccb827f300d3fdf52d031e2ffd408",
+      "modified": false
+    },
+    "contracts/interfaces/IERC20.sol": {
+      "upstream_path": "dex/contracts/interfaces/IERC20.sol",
+      "gitBlobSha": "609bd82f3c5ac21b3ddced51a9aef0091847362c",
+      "sha256": "7d1fa868fedcbf3a81515d8a223fce97947457897083fc3318c591d94062baa1",
+      "modified": false
+    },
+    "contracts/interfaces/ILQCFlowFactory.sol": {
+      "upstream_path": "dex/contracts/interfaces/ILQCFlowFactory.sol",
+      "gitBlobSha": "3713ab624a9d43690c28ee56f15177a7807f488b",
+      "sha256": "e4cb5f47705b913af03ae21868021a00c99c0a73671990cca8433a125d6662cc",
+      "modified": false
+    },
+    "contracts/interfaces/ILQCFlowPair.sol": {
+      "upstream_path": "dex/contracts/interfaces/ILQCFlowPair.sol",
+      "gitBlobSha": "cad1e9f9b20421c992ca3917878ea1687227323f",
+      "sha256": "0ddd7b0dc011fc96647c7601fda295c61462ade856d6bba6d7743aac5b639a6b",
+      "modified": false
+    },
+    "contracts/interfaces/IWBNB.sol": {
+      "upstream_path": "dex/contracts/interfaces/IWBNB.sol",
+      "gitBlobSha": "263b428cb4a42092b8e3c959dbebac410c721d20",
+      "sha256": "d618910cbaadb8b3135cc7e2e9f2a68bbe7e184da7a44f8d39b28b4d285e6849",
+      "modified": false
+    },
+    "contracts/libraries/Math.sol": {
+      "upstream_path": "dex/contracts/libraries/Math.sol",
+      "gitBlobSha": "789133715c8a236e62ab74c21a10a9c59404a221",
+      "sha256": "2a9526712ea0bb2e38a1e716445655c2d75c49a5bec0e59e0d1822d7a50c3508",
+      "modified": false
+    },
+    "contracts/libraries/SafeTransferLib.sol": {
+      "upstream_path": "dex/contracts/libraries/SafeTransferLib.sol",
+      "gitBlobSha": "5f740c2e9e95377370741cced515cde4207f4d14",
+      "sha256": "7ceaef5d4af5e15c8d70e555c2baa3b2a5f878f2567691492c6a00afff4dd464",
+      "modified": false
+    }
+  },
+  "compilerProof": {
+    "source": "https://raw.githubusercontent.com/ethereum/solc-bin/gh-pages/linux-amd64/solc-linux-amd64-v0.8.30+commit.73712a01",
+    "list_sha256": "b44c1d0e598ed0bcbf4ee49c86c5ae85b63718c1591689b02d12d7a11d45a2ac",
+    "compiler_sha256": "f3e987dc6ecebd4bd350c48edcbc320b46cf9e3109bd3fc3d88f1acaf4c428f7",
+    "version": "solc, the solidity compiler commandline interface\nVersion: 0.8.30+commit.73712a01.Linux.g++",
+    "bytes": 16791816
+  },
+  "compiledArtifacts": {
+    "LQCFlowFactory": {
+      "sha256": "08a951cb21b75e6490f2d41160a067f603b23e0cb69860f963e709ae17daf44b",
+      "creation_bytes": 7622,
+      "runtime_bytes": 7430
+    },
+    "LQCFlowPair": {
+      "sha256": "b79ac722240e6b866353ab06b817a7b0eaaaad6e81e6b239006de2076fbf6146",
+      "creation_bytes": 6198,
+      "runtime_bytes": 5909
+    },
+    "LQCFlowRouter": {
+      "sha256": "234a73f8022db0182938e153209159135b09c7d4affb01ca323b0b6f68571973",
+      "creation_bytes": 8233,
+      "runtime_bytes": 7908
+    },
+    "FlowCallbackToken": {
+      "sha256": "4f2a0b795b63b4adb27109887768d9b5bf7a8d189ae363e17ee8d07d8e805a2b",
+      "creation_bytes": 1873,
+      "runtime_bytes": 1847
+    },
+    "FlowWithdrawalProbe": {
+      "sha256": "f4501cbce321f1d26a8cc72c6be458a1841a398b13624e11f7ab1ade4c5e9375",
+      "creation_bytes": 869,
+      "runtime_bytes": 727
+    },
+    "MockWBNB": {
+      "sha256": "55da009470e812757cb2f56a750762dbc420f09962967a18c4f2b7710730b94f",
+      "creation_bytes": 1624,
+      "runtime_bytes": 1598
+    },
+    "LQCTestToken": {
+      "sha256": "a06c30be94e704749cb960cf0e49e63020c728975179903352603911c1c88512",
+      "creation_bytes": 2761,
+      "runtime_bytes": 1735
+    }
+  },
+  "localFixtures": {
+    "contracts/local/FlowSecurityProbes.sol": {
+      "sha256": "03334100284c3248aaba34c16073591f6df1854a61c15228a7737fec453963c0",
+      "purpose": "adversarial tests only; not a Flow replacement"
+    }
+  },
+  "patched_sources": {
+    "contracts/LQCFlowRouter.sol": {
+      "sha256": "60e01060fd669e9aa9a2af27fac6202fd8a1c7b23ad0c3e1ba40d233a94b675a",
+      "upstreamCopy": "upstream/LQCFlowRouter.sol",
+      "upstreamSha256": "9f3eaf98f43b852ffe4f53c1d26880fc31e8a3106374d94aec1dfd9ef47d1a71",
+      "upstreamGitBlobSha": "39864ed9a3e900cf14c7610f6515caf9ec76b93d",
+      "reason": "Reject amountAMin/amountBMin greater than desired before initial-liquidity fast path; existing error/ABI retained"
+    }
+  }
+}
