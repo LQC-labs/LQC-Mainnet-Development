@@ -23,6 +23,9 @@ func ValidateMainnetDraft(profile chainconfig.RuntimeConfig, raw []byte) error {
 	if err := profile.Validate(); err != nil {
 		return err
 	}
+	if err := rejectDuplicateJSONKeys(raw); err != nil {
+		return fmt.Errorf("invalid genesis JSON: %w", err)
+	}
 	var doc struct {
 		ChainID    string          `json:"chain_id"`
 		AppState   json.RawMessage `json:"app_state"`
