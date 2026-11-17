@@ -2,7 +2,7 @@ name: LQC Core current-source Linux checks
 
 on:
   push:
-    branches: [dev/lqc-core]
+    branches: [dev/lqc-core, integration/mn001-v29-validation-20261117]
   pull_request:
     branches: [main, dev/lqc-core]
 
@@ -39,6 +39,10 @@ jobs:
       LQC_RUN_EVMRPC_INTEGRATION: '0'
       LQC_RUN_RESTART_REGRESSION: '0'
       LQC_RUN_ADMISSION_REGRESSION: '0'
+      LQC_RUN_FLOW_MINIMAL: '0'
+      LQC_RUN_CLUSTER: '0'
+      LQC_REQUIRE_FLOW_ASSETS: '0'
+      LQC_FLOW_ASSET_ROOT: ''
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
@@ -69,14 +73,39 @@ jobs:
           manifest="$(mktemp "$RUNNER_TEMP/lqc-dependencies.XXXXXXXX")"
           sha256sum go.mod go.sum > "$manifest"
           trap 'sha256sum --check "$manifest"' EXIT
-          go test -mod=readonly -p=2 -count=1 -timeout=3m ./...
-          go mod verify
-          go build -mod=readonly -p=2 ./...
-          go build -mod=readonly -p=2 -o "$RUNNER_TEMP/lqcd" ./cmd/lqcd
-          "$RUNNER_TEMP/lqcd" --help
+          # MN-001 reviewed allowlist and compile-only gate; do not execute lqcd.
+          bash scripts/security-preflight-linux.sh
+  node-regressions:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: '22.16.0'
+      - name: Check pinned Node runtime
+        run: test "$(node --version)" = v22.16.0
       - name: Check Flow adapter regressions (not full dApp integration)
         run: |
           set -euo pipefail
           node --test --test-reporter=tap scripts/flow-quote-adapter.test.mjs | tee "$RUNNER_TEMP/lqc-flow.tap"
           grep -Eq '^# tests 25$' "$RUNNER_TEMP/lqc-flow.tap"
+          grep -Eq '^# pass 25$' "$RUNNER_TEMP/lqc-flow.tap"
+          grep -Eq '^# skipped 0$' "$RUNNER_TEMP/lqc-flow.tap"
           grep -Eq '^# fail 0$' "$RUNNER_TEMP/lqc-flow.tap"
+      - name: Check local Devnet profile boundaries (no network or signing)
+        run: |
+          set -euo pipefail
+          node --test --test-reporter=tap scripts/flow-devnet-profile.test.mjs | tee "$RUNNER_TEMP/lqc-devnet-profile.tap"
+          grep -Eq '^# tests 40$' "$RUNNER_TEMP/lqc-devnet-profile.tap"
+          grep -Eq '^# pass 40$' "$RUNNER_TEMP/lqc-devnet-profile.tap"
+          grep -Eq '^# skipped 0$' "$RUNNER_TEMP/lqc-devnet-profile.tap"
+          grep -Eq '^# fail 0$' "$RUNNER_TEMP/lqc-devnet-profile.tap"
