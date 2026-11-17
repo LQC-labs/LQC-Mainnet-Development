@@ -79,6 +79,7 @@ func newRootCommand() *cobra.Command {
 			})
 		},
 	})
+	genesisCmd.AddCommand(mainnetDraftValidationCommand())
 	root.AddCommand(initCmd, genesisCmd, singleValidatorCommand())
 	return root
 }
