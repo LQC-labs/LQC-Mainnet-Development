@@ -1,0 +1,15 @@
+{
+  "name": "@lqc/network-config",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "exports": {
+    ".": "./index.mjs"
+  },
+  "scripts": {
+    "test": "node --test index.test.mjs"
+  }
+}
