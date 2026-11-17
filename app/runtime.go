@@ -5,6 +5,7 @@ package app
 
 import (
 	"fmt"
+	"reflect"
 
 	"cosmossdk.io/log/v2"
 	chainconfig "github.com/LQC-labs/LQC-Mainnet-Development/chain/config"
@@ -21,6 +22,12 @@ func NewWithRuntime(logger log.Logger, db dbm.DB, home string, runtime chainconf
 	}
 	if runtime.Chain.NetworkKind != chainconfig.NetworkDevnet {
 		return nil, fmt.Errorf("mainnet application runtime is not yet integrated")
+	}
+	// New still constructs the pinned test profile. Reject any alternate
+	// otherwise-valid Devnet instead of silently launching a different chain.
+	pinned := chainconfig.RuntimeFromDevnet(chainconfig.TestOnlyDevnetConfig())
+	if !reflect.DeepEqual(runtime, pinned) {
+		return nil, fmt.Errorf("runtime does not match pinned test Devnet identity")
 	}
 	return New(logger, db, home)
 }

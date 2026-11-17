@@ -33,6 +33,20 @@ func TestRuntimeApplicationBoundary(t *testing.T) {
 	if app, err := NewWithRuntime(log.NewNopLogger(), dbm.NewMemDB(), t.TempDir(), mainnet); app != nil || err == nil || !strings.Contains(err.Error(), "not yet integrated") {
 		t.Fatalf("mainnet unexpectedly constructed: app=%v err=%v", app, err)
 	}
+	// Both alternatives are syntactically valid but must never be silently
+	// replaced by the pinned test Devnet inside New.
+	alternate := dev
+	alternate.Chain.CosmosChainID = "lqc-other-test-1"
+	if err := alternate.Validate(); err != nil { t.Fatalf("alternate fixture invalid: %v", err) }
+	if app, err := NewWithRuntime(log.NewNopLogger(), dbm.NewMemDB(), t.TempDir(), alternate); app != nil || err == nil || !strings.Contains(err.Error(), "does not match") {
+		t.Fatalf("alternate Devnet unexpectedly accepted: app=%v err=%v", app, err)
+	}
+	alternate = dev
+	alternate.MinimumGasPrice = "0.02" + dev.Chain.NativeDenom
+	if err := alternate.Validate(); err != nil { t.Fatalf("gas price fixture invalid: %v", err) }
+	if app, err := NewWithRuntime(log.NewNopLogger(), dbm.NewMemDB(), t.TempDir(), alternate); app != nil || err == nil || !strings.Contains(err.Error(), "does not match") {
+		t.Fatalf("alternate gas price unexpectedly accepted: app=%v err=%v", app, err)
+	}
 	invalid := dev
 	invalid.Chain.EVMChainID = 56
 	if app, err := NewWithRuntime(log.NewNopLogger(), dbm.NewMemDB(), t.TempDir(), invalid); app != nil || err == nil {
