@@ -38,7 +38,7 @@ func ValidateMainnetDraft(profile chainconfig.RuntimeConfig, raw []byte) error {
 	if doc.ChainID != profile.Chain.CosmosChainID {
 		return fmt.Errorf("genesis Cosmos chain ID mismatch")
 	}
-	if len(doc.Validators) != 0 {
+	if doc.Validators == nil || len(doc.Validators) != 0 {
 		return fmt.Errorf("validators require separately approved integration")
 	}
 	var state map[string]json.RawMessage
@@ -59,19 +59,19 @@ func ValidateMainnetDraft(profile chainconfig.RuntimeConfig, raw []byte) error {
 		Balances []json.RawMessage `json:"balances"`
 		Supply []json.RawMessage `json:"supply"`
 	}
-	if err := json.Unmarshal(state["bank"], &bank); err != nil || len(bank.Balances) != 0 || len(bank.Supply) != 0 {
+	if err := json.Unmarshal(state["bank"], &bank); err != nil || bank.Balances == nil || bank.Supply == nil || len(bank.Balances) != 0 || len(bank.Supply) != 0 {
 		return fmt.Errorf("funded bank genesis forbidden in draft")
 	}
 	var auth struct { Accounts []json.RawMessage `json:"accounts"` }
-	if err := json.Unmarshal(state["auth"], &auth); err != nil || len(auth.Accounts) != 0 {
+	if err := json.Unmarshal(state["auth"], &auth); err != nil || auth.Accounts == nil || len(auth.Accounts) != 0 {
 		return fmt.Errorf("accounts forbidden in draft")
 	}
 	var staking struct { Validators []json.RawMessage `json:"validators"` }
-	if err := json.Unmarshal(state["staking"], &staking); err != nil || len(staking.Validators) != 0 {
+	if err := json.Unmarshal(state["staking"], &staking); err != nil || staking.Validators == nil || len(staking.Validators) != 0 {
 		return fmt.Errorf("staking validators forbidden in draft")
 	}
 	var genutil struct { GenTxs []json.RawMessage `json:"gen_txs"` }
-	if err := json.Unmarshal(state["genutil"], &genutil); err != nil || len(genutil.GenTxs) != 0 {
+	if err := json.Unmarshal(state["genutil"], &genutil); err != nil || genutil.GenTxs == nil || len(genutil.GenTxs) != 0 {
 		return fmt.Errorf("genesis transactions forbidden in draft")
 	}
 	return nil

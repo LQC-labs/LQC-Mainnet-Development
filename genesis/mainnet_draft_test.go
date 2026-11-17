@@ -29,6 +29,15 @@ func TestMainnetDraftOfflinePreflight(t *testing.T) {
 	}
 	check(t, base, true)
 	for name, mutate := range map[string]func(map[string]any){
+		"null validators": func(d map[string]any) { d["validators"] = nil },
+		"missing validators": func(d map[string]any) { delete(d, "validators") },
+		"null bank": func(d map[string]any) { d["app_state"].(map[string]any)["bank"] = nil },
+		"missing balances": func(d map[string]any) { d["app_state"].(map[string]any)["bank"] = map[string]any{"supply": []any{}} },
+		"null balances": func(d map[string]any) { d["app_state"].(map[string]any)["bank"] = map[string]any{"balances": nil, "supply": []any{}} },
+		"missing accounts": func(d map[string]any) { d["app_state"].(map[string]any)["auth"] = map[string]any{} },
+		"null accounts": func(d map[string]any) { d["app_state"].(map[string]any)["auth"] = map[string]any{"accounts": nil} },
+		"missing staking validators": func(d map[string]any) { d["app_state"].(map[string]any)["staking"] = map[string]any{} },
+		"missing gentxs": func(d map[string]any) { d["app_state"].(map[string]any)["genutil"] = map[string]any{} },
 		"wrong chain": func(d map[string]any) { d["chain_id"] = "wrong-1" },
 		"validators": func(d map[string]any) { d["validators"] = []any{map[string]any{"address": "fake"}} },
 		"missing state": func(d map[string]any) { delete(d, "app_state") },
