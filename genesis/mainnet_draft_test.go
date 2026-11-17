@@ -38,6 +38,7 @@ func TestMainnetDraftOfflinePreflight(t *testing.T) {
 		"null accounts": func(d map[string]any) { d["app_state"].(map[string]any)["auth"] = map[string]any{"accounts": nil} },
 		"missing staking validators": func(d map[string]any) { d["app_state"].(map[string]any)["staking"] = map[string]any{} },
 		"missing gentxs": func(d map[string]any) { d["app_state"].(map[string]any)["genutil"] = map[string]any{} },
+		"unknown root field": func(d map[string]any) { d["unapproved_activation"] = true },
 		"wrong chain": func(d map[string]any) { d["chain_id"] = "wrong-1" },
 		"validators": func(d map[string]any) { d["validators"] = []any{map[string]any{"address": "fake"}} },
 		"missing state": func(d map[string]any) { delete(d, "app_state") },

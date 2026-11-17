@@ -32,6 +32,7 @@ func ValidateMainnetDraft(profile chainconfig.RuntimeConfig, raw []byte) error {
 		Validators []json.RawMessage `json:"validators"`
 	}
 	d := json.NewDecoder(bytes.NewReader(raw))
+	d.DisallowUnknownFields()
 	if err := d.Decode(&doc); err != nil {
 		return fmt.Errorf("decode genesis draft: %w", err)
 	}
