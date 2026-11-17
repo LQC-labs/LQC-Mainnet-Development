@@ -26,3 +26,19 @@ jobs:
           test "$(node --version)" = v22.16.0
           npm ci --ignore-scripts --no-audit --no-fund
           node --input-type=module -e "import { version } from 'ethers'; if (version !== '6.17.0') process.exit(1); console.log(version)"
+      - name: Offline ethers ABI and address smoke test (no RPC, signing, or deployment)
+        working-directory: tools/flow-mvp
+        run: |
+          set -euo pipefail
+          node --input-type=module <<'NODE'
+          import assert from 'node:assert/strict';
+          import { Interface, getAddress, ZeroAddress } from 'ethers';
+          const iface = new Interface(['function transfer(address to,uint256 amount) returns (bool)']);
+          const recipient = '0x1000000000000000000000000000000000000001';
+          const encoded = iface.encodeFunctionData('transfer', [recipient, 1000n]);
+          const decoded = iface.decodeFunctionData('transfer', encoded);
+          assert.equal(decoded[0], getAddress(recipient));
+          assert.equal(decoded[1], 1000n);
+          assert.notEqual(decoded[0], ZeroAddress);
+          console.log('offline ethers ABI smoke PASS; no network or transaction');
+          NODE
