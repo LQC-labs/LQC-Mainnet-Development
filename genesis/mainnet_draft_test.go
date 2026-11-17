@@ -37,6 +37,10 @@ func TestMainnetDraftOfflinePreflight(t *testing.T) {
 	for name, mutate := range map[string]func(map[string]any){
 		"null validators": func(d map[string]any) { d["validators"] = nil },
 		"missing validators": func(d map[string]any) { delete(d, "validators") },
+		"scalar auth module": func(d map[string]any) { d["app_state"].(map[string]any)["auth"] = "invalid" },
+		"array staking module": func(d map[string]any) { d["app_state"].(map[string]any)["staking"] = []any{} },
+		"null genutil module": func(d map[string]any) { d["app_state"].(map[string]any)["genutil"] = nil },
+		"array unknown module": func(d map[string]any) { d["app_state"].(map[string]any)["unexpected"] = []any{} },
 		"null bank": func(d map[string]any) { d["app_state"].(map[string]any)["bank"] = nil },
 		"missing balances": func(d map[string]any) { d["app_state"].(map[string]any)["bank"] = map[string]any{"supply": []any{}} },
 		"null balances": func(d map[string]any) { d["app_state"].(map[string]any)["bank"] = map[string]any{"balances": nil, "supply": []any{}} },

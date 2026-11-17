@@ -58,6 +58,14 @@ func ValidateMainnetDraft(profile chainconfig.RuntimeConfig, raw []byte) error {
 			return fmt.Errorf("missing %s module", module)
 		}
 	}
+	// Require every declared module to be a JSON object. json.Unmarshal into a
+	// Go struct can otherwise accept null, and unknown modules could be arrays.
+	for name, value := range state {
+		var object map[string]json.RawMessage
+		if err := json.Unmarshal(value, &object); err != nil || object == nil {
+			return fmt.Errorf("invalid %s module object", name)
+		}
+	}
 	// All allocation and validator paths must be empty at this preflight gate.
 	var bank struct {
 		Balances []json.RawMessage `json:"balances"`
