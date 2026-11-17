@@ -1,0 +1,17 @@
+{
+  "name": "@lqc/local-mvp-harness",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": "22.16.0"
+  },
+  "scripts": {
+    "test": "node --test mvp.test.mjs",
+    "check": "node cli.mjs check",
+    "plan": "node cli.mjs plan"
+  },
+  "dependencies": {
+    "ethers": "6.17.0"
+  }
+}

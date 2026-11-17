@@ -1,0 +1,29 @@
+name: MN-001 isolated Flow MVP dependency gate
+on:
+  push:
+    branches: [integration/mn001-v29-validation-20261117]
+    paths:
+      - 'tools/flow-mvp/package.json'
+      - 'tools/flow-mvp/package-lock.json'
+      - '.github/workflows/mn001-flow-mvp-dependencies.yml'
+permissions:
+  contents: read
+jobs:
+  dependency-install:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: '22.16.0'
+          cache: false
+      - name: Install pinned dependencies without lifecycle scripts
+        working-directory: tools/flow-mvp
+        run: |
+          set -euo pipefail
+          test "$(node --version)" = v22.16.0
+          npm ci --ignore-scripts --no-audit --no-fund
+          node --input-type=module -e "import { version } from 'ethers'; if (version !== '6.17.0') process.exit(1); console.log(version)"
