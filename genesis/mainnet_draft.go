@@ -78,5 +78,37 @@ func ValidateMainnetDraft(profile chainconfig.RuntimeConfig, raw []byte) error {
 	if err := json.Unmarshal(state["genutil"], &genutil); err != nil || genutil.GenTxs == nil || len(genutil.GenTxs) != 0 {
 		return fmt.Errorf("genesis transactions forbidden in draft")
 	}
+	// Check explicit denomination declarations when supplied. These checks do
+	// not replace SDK module genesis validation.
+	if err := validateDraftDenom(state["staking"], []string{"params", "bond_denom"}, profile.Chain.NativeDenom); err != nil {
+		return fmt.Errorf("staking denomination: %w", err)
+	}
+	if rawEVM, ok := state["evm"]; ok {
+		if err := validateDraftDenom(rawEVM, []string{"params", "evm_denom"}, profile.Chain.NativeDenom); err != nil {
+			return fmt.Errorf("EVM denomination: %w", err)
+		}
+	}
+	return nil
+}
+
+func validateDraftDenom(raw json.RawMessage, path []string, expected string) error {
+	var object map[string]json.RawMessage
+	if err := json.Unmarshal(raw, &object); err != nil || object == nil {
+		return fmt.Errorf("invalid module object")
+	}
+	for _, field := range path[:len(path)-1] {
+		child, exists := object[field]
+		if !exists { return nil }
+		if err := json.Unmarshal(child, &object); err != nil || object == nil {
+			return fmt.Errorf("invalid %s object", field)
+		}
+	}
+	field := path[len(path)-1]
+	if value, exists := object[field]; exists {
+		var denom string
+		if err := json.Unmarshal(value, &denom); err != nil || denom != expected {
+			return fmt.Errorf("%s must match native denomination", field)
+		}
+	}
 	return nil
 }

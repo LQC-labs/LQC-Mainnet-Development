@@ -28,6 +28,12 @@ func TestMainnetDraftOfflinePreflight(t *testing.T) {
 		if (err == nil) != wantValid { t.Fatalf("valid=%v error=%v", wantValid, err) }
 	}
 	check(t, base, true)
+	withDenoms := map[string]any{}
+	encoded, _ := json.Marshal(base)
+	if err := json.Unmarshal(encoded, &withDenoms); err != nil { t.Fatal(err) }
+	withDenoms["app_state"].(map[string]any)["staking"] = map[string]any{"validators":[]any{}, "params":map[string]any{"bond_denom":profile.Chain.NativeDenom}}
+	withDenoms["app_state"].(map[string]any)["evm"] = map[string]any{"params":map[string]any{"evm_denom":profile.Chain.NativeDenom}}
+	check(t, withDenoms, true)
 	for name, mutate := range map[string]func(map[string]any){
 		"null validators": func(d map[string]any) { d["validators"] = nil },
 		"missing validators": func(d map[string]any) { delete(d, "validators") },
@@ -39,6 +45,8 @@ func TestMainnetDraftOfflinePreflight(t *testing.T) {
 		"missing staking validators": func(d map[string]any) { d["app_state"].(map[string]any)["staking"] = map[string]any{} },
 		"missing gentxs": func(d map[string]any) { d["app_state"].(map[string]any)["genutil"] = map[string]any{} },
 		"unknown root field": func(d map[string]any) { d["unapproved_activation"] = true },
+		"staking denom mismatch": func(d map[string]any) { d["app_state"].(map[string]any)["staking"] = map[string]any{"validators":[]any{}, "params":map[string]any{"bond_denom":"wrong"}} },
+		"evm denom mismatch": func(d map[string]any) { d["app_state"].(map[string]any)["evm"] = map[string]any{"params":map[string]any{"evm_denom":"wrong"}} },
 		"wrong chain": func(d map[string]any) { d["chain_id"] = "wrong-1" },
 		"validators": func(d map[string]any) { d["validators"] = []any{map[string]any{"address": "fake"}} },
 		"missing state": func(d map[string]any) { delete(d, "app_state") },
