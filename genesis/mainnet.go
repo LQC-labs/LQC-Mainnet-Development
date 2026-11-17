@@ -24,6 +24,9 @@ type MainnetProfile struct {
 // ValidateMainnetProfile validates a pre-activation proposal only.
 // No default mainnet identities or validator keys are created.
 func ValidateMainnetProfile(raw []byte) error {
+	if err := rejectDuplicateJSONKeys(raw); err != nil {
+		return fmt.Errorf("invalid mainnet profile JSON: %w", err)
+	}
 	var p MainnetProfile
 	d := json.NewDecoder(bytes.NewReader(raw))
 	d.DisallowUnknownFields()

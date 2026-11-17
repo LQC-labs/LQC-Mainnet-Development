@@ -4,6 +4,7 @@
 package genesis
 
 import (
+	"bytes"
 	"encoding/json"
 	"testing"
 
@@ -56,5 +57,21 @@ func TestMainnetProposalOfflineValidation(t *testing.T) {
 		append(append([]byte{}, raw...), []byte(" {}")...),
 	} {
 		if ValidateMainnetProfile(raw) == nil { t.Fatal("malformed mainnet proposal accepted") }
+	}
+}
+
+func TestMainnetProfileRejectsDuplicateKeys(t *testing.T) {
+	p := mainnetFixture()
+	raw, err := json.Marshal(p)
+	if err != nil { t.Fatal(err) }
+	if err := ValidateMainnetProfile(raw); err != nil { t.Fatal(err) }
+	for name, mutated := range map[string][]byte{
+		"root override": append([]byte(`{"approved":true,`), raw[1:]...),
+		"nested chain override": bytes.Replace(raw, []byte(`"EVMChainID":423456781`), []byte(`"EVMChainID":56,"EVMChainID":423456781`), 1),
+	} {
+		t.Run(name, func(t *testing.T) {
+			if bytes.Equal(raw, mutated) { t.Fatal("fixture mutation failed") }
+			if err := ValidateMainnetProfile(mutated); err == nil { t.Fatal("duplicate keys accepted") }
+		})
 	}
 }
