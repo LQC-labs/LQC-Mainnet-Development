@@ -250,7 +250,7 @@ func TestEntryCoordinatorConnectionOffline(t *testing.T) {
 			if name == "timeout" && time.Since(start) > time.Second {
 				t.Fatal("unbounded fake wait")
 			}
-			t.Logf("coordinator=%s close=%d verify=%d fakeCalls=%v elapsed=%s", report.Status, owner.closed, owner.verified, base.calls, time.Since(start))
+			t.Logf("coordinator=%s close=%d verify=%d elapsed=%s", report.Status, owner.closed, owner.verified, time.Since(start))
 		})
 	}
 }
