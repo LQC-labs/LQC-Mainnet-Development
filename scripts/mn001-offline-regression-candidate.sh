@@ -14,7 +14,7 @@ cli_tests='^(TestOfflineMainnetDraftCLI|TestReadBoundedOfflineFile)$'
 if [[ "${LQC_MN001_OFFLINE_TEST_APPROVED:-0}" != '1' ]]; then
   printf '%s\n' 'MN-001 candidate only: no tests executed.'
   printf '%s\n' 'Approval requires reviewing dependency init, TestMain, and all test call graphs.'
-  printf '%s\n' 'After approval, run on isolated Linux with LQC_MN001_OFFLINE_TEST_APPROVED=1.'
+  printf '%s\n' 'BLOCKED: approval flag alone never permits execution; isolated executor and separate authorization do not exist.'
   printf 'chain/config: %s\ngenesis: %s\ncmd/lqcd: %s\n' "$chain_tests" "$genesis_tests" "$cli_tests"
   exit 0
 fi
