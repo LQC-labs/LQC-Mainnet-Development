@@ -91,6 +91,27 @@ jobs:
             printf '%s\n' 'ERROR: inventory script contains an execution command.' >&2
             exit 1
           fi
+      - name: Verify MN-001 approval remains fail-closed (offline only)
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash -n scripts/mn001-approval-status.sh
+          report="$(mktemp)"
+          trap 'rm -f -- "$report"' EXIT
+          if bash scripts/mn001-approval-status.sh >"$report" 2>&1; then
+            printf '%s\n' 'ERROR: offline MN-001 approval gate unexpectedly returned success.' >&2
+            exit 1
+          fi
+          cat "$report"
+          grep -Fxq 'MN001_GATE=NO_GO' "$report"
+          grep -Fxq 'NETWORK_ISOLATION=BLOCKED' "$report"
+          grep -Fxq 'FILESYSTEM_ISOLATION=BLOCKED' "$report"
+          grep -Fxq 'CREDENTIAL_ISOLATION=BLOCKED' "$report"
+          grep -Fxq 'RESOURCE_LIMITS=BLOCKED' "$report"
+          grep -Fxq 'TRANSITIVE_INIT_REVIEW=BLOCKED' "$report"
+          grep -Fxq 'USER_TEST_AUTHORIZATION=NOT_GRANTED' "$report"
+          grep -Fxq 'MN001_CANDIDATE_TESTS=NOT_EXECUTED' "$report"
+          grep -Fxq 'MAINNET=NO_GO' "$report"
       - name: Run reviewed existing security preflight
         shell: bash
         run: |
