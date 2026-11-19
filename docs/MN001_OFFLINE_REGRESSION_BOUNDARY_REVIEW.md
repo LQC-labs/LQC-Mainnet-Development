@@ -46,3 +46,13 @@ The current commit's recursive Git tree lists 28 Go files in `chain/config`, `ge
 Some non-selected test bodies in `genesis` and `cmd/lqcd` use subprocess helpers or signing paths. `go test -run` excludes these non-selected test bodies, but still compiles the package and initializes imported dependencies. The `app` package imports Cosmos SDK / Cosmos EVM components; their dependency-level init and package variable side effects are **not cleared** by this audit.
 
 **Decision:** Keep `LQC_MN001_OFFLINE_TEST_APPROVED=0` and the current workflow dry-run-only. No claim of 8-test PASS, no activation, no PR merge. Next evidence needed: dependency-init boundary review and an isolated, credential-free execution policy before any explicit approval.
+
+## Linux offline input hardening evidence (2026-11-19)
+
+- Commit `beefda4d583fb0b0e4eb3df37d4e93c38b9cebb0` adds Linux `openat2` with `RESOLVE_NO_SYMLINKS`, `O_CLOEXEC`, and `O_NONBLOCK`; the reader retains post-open regular-file and 8 MiB checks. Non-Linux platforms fail closed.
+- A Linux-only `TestReadBoundedOfflineFileFIFO` fixture was added to check rejection of a named pipe with no writer. The existing `TestReadBoundedOfflineFile` also rejects a symlinked parent directory.
+- GitHub Actions [run 44473726167](https://github.com/LQC-labs/LQC-Mainnet-Development/actions/runs/44473726167) concluded **success** on the exact commit `beefda4d`. It runs the previously reviewed security preflight, dry-run verification and package test-binary compilation; it **does not execute** either the new FIFO test or the eight candidate tests.
+- `O_NONBLOCK` mitigates FIFO open blocking, but this is source-level reasoning until the FIFO fixture executes in an explicitly approved isolated Linux environment. Kernel support and actual behavior are not yet runtime-certified.
+- `openat2` with `RESOLVE_NO_SYMLINKS` prevents symlink traversal during path resolution; no claim is made about all filesystem race classes, mounts, or hostile path mutation.
+
+**Gate unchanged:** `LQC_MN001_OFFLINE_TEST_APPROVED=0`; dependency initialization and isolated-runner authorization remain outstanding. MN-001 IN PROGRESS / MAINNET NO-GO.
