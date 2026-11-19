@@ -26,6 +26,13 @@ if [[ "${GITHUB_ACTIONS:-false}" == 'true' ]]; then
   exit 1
 fi
 
+# Fail closed until an independently reviewed isolated executor exists.
+# This guard is intentionally unconditional: an environment variable, local
+# approval flag, or CI override is NOT proof of user authorization or isolation.
+# Do not remove this block without a separate approved execution-gate change.
+printf '%s\\n' 'ERROR: MN-001 candidate execution remains BLOCKED: isolated executor and approval evidence are not implemented.' >&2
+exit 1
+
 export GOTOOLCHAIN=local GOWORK=off
 # Prevent automatic toolchain download/switch before the first go invocation.
 test "$(go env GOOS)" = linux
