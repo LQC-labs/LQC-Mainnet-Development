@@ -24,3 +24,17 @@ Scope: `integration/mn001-offline-gate-hardening-20261119`, after Linux CI run 4
 This review does **not** approve PR merge, mainnet Genesis adoption, validator signing, node startup, deployment, operational mTLS/RBAC, P0-A/P0-B closure, MN-002, or mainnet activation. Follow GitHub Terms of Service, Acceptable Use Policies, and Actions/Pages usage restrictions; GitHub Pages must not host commercial DEX trading operations.
 
 **Gate: MN-001 IN PROGRESS; MAINNET NO-GO.**
+
+## Additional exact-test call-path review (2026-11-19)
+
+The eight selected test functions were re-read directly from the current branch:
+
+| Package | Exact selected functions | Direct effects observed |
+| --- | --- | --- |
+| `chain/config` | `TestRuntimeDevnetCompatibility`, `TestExplicitRuntimeValidation` | Synthetic in-memory config, JSON serialization, table-driven validation; no file or CLI invocation. |
+| `genesis` | `TestMainnetProposalOfflineValidation`, `TestMainnetProfileRejectsDuplicateKeys`, `TestMainnetDraftOfflinePreflight`, `TestMainnetDraftRejectsDuplicateJSONKeys` | Synthetic JSON fixtures and in-memory profile/draft validation. The tests do not invoke `runGenesisTestInSubprocess`, `NewSingleValidator`, or `withGenesisApp`. |
+| `cmd/lqcd` | `TestOfflineMainnetDraftCLI`, `TestReadBoundedOfflineFile` | Temporary local JSON files and Cobra `genesis validate-mainnet-draft`; regular-file size/error checks. The tests do not select `single-validator create`. |
+
+**Boundary limitation:** Go loads/initializes each package and its imports before `-run` selects a test. Therefore exact-name filtering prevents other test **bodies** from running but does not, by itself, rule out imported-package `init` side effects. The repository's `single-validator create` command has a signing implementation, although only command construction is reached in the selected CLI test. Dependency initialization remains an explicit approval blocker.
+
+The latest preflight-only CI run [44463074190](https://github.com/LQC-labs/LQC-Mainnet-Development/actions/runs/44463074190) completed successfully for the prior commit `a2cd8bd4`; it **does not** certify the eight selected tests. This documentation update must receive its own CI status before being marked checked.
