@@ -34,7 +34,7 @@ if ! timeout --signal=TERM --kill-after=2s 12s \
     test -d /sys/class/net
     # Never suppress interface enumeration failures: an unreadable network
     # inventory is BLOCKED, not proof of isolation.
-    interfaces="$(find /sys/class/net -mindepth 1 -maxdepth 1 -printf "%f\\n")" || exit 1
+    interfaces="$(find /sys/class/net -mindepth 1 -maxdepth 1 -printf "%f\n")" || exit 1
     test -n "$interfaces"
     test "$interfaces" = lo
     printf "%s\n" "NETWORK_NAMESPACE_PROBE=PASS"
