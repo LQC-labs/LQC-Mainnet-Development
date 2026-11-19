@@ -38,3 +38,11 @@ The eight selected test functions were re-read directly from the current branch:
 **Boundary limitation:** Go loads/initializes each package and its imports before `-run` selects a test. Therefore exact-name filtering prevents other test **bodies** from running but does not, by itself, rule out imported-package `init` side effects. The repository's `single-validator create` command has a signing implementation, although only command construction is reached in the selected CLI test. Dependency initialization remains an explicit approval blocker.
 
 The latest preflight-only CI run [44463074190](https://github.com/LQC-labs/LQC-Mainnet-Development/actions/runs/44463074190) completed successfully for the prior commit `a2cd8bd4`; it **does not** certify the eight selected tests. This documentation update must receive its own CI status before being marked checked.
+
+## Local project package initialization audit (2026-11-19)
+
+The current commit's recursive Git tree lists 28 Go files in `chain/config`, `genesis`, and `cmd/lqcd`, plus 9 Go files in their directly imported local `app` package. All 37 files were fetched and searched for explicit `func init()` and `func TestMain()` declarations; none were found. This is a **source-text declaration audit**, not an exhaustive dynamic or transitive-dependency audit.
+
+Some non-selected test bodies in `genesis` and `cmd/lqcd` use subprocess helpers or signing paths. `go test -run` excludes these non-selected test bodies, but still compiles the package and initializes imported dependencies. The `app` package imports Cosmos SDK / Cosmos EVM components; their dependency-level init and package variable side effects are **not cleared** by this audit.
+
+**Decision:** Keep `LQC_MN001_OFFLINE_TEST_APPROVED=0` and the current workflow dry-run-only. No claim of 8-test PASS, no activation, no PR merge. Next evidence needed: dependency-init boundary review and an isolated, credential-free execution policy before any explicit approval.
