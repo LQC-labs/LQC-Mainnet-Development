@@ -96,3 +96,17 @@ jobs:
         run: |
           set -euo pipefail
           bash scripts/security-preflight-linux.sh
+      - name: Publish MN-001 security boundary (preflight is not approval)
+        if: ${{ always() }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          {
+            printf '%s\n' '## MN-001 status: IN PROGRESS / MAINNET NO-GO'
+            printf '%s\n' ''
+            printf '%s\n' 'This job reports reviewed security preflight only.'
+            printf '%s\n' 'NETWORK_ISOLATION=BLOCKED; MN001_GATE=NO_GO.'
+            printf '%s\n' 'No isolated-runner proof or explicit test authorization exists.'
+            printf '%s\n' 'A green verify-scripts check MUST NOT be interpreted as deployment approval.'
+            printf '%s\n' 'Candidate tests, validator operations, and activation remain prohibited.'
+          } >> "$GITHUB_STEP_SUMMARY"
