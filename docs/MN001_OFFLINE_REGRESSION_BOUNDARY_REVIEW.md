@@ -56,3 +56,11 @@ Some non-selected test bodies in `genesis` and `cmd/lqcd` use subprocess helpers
 - `openat2` with `RESOLVE_NO_SYMLINKS` prevents symlink traversal during path resolution; no claim is made about all filesystem race classes, mounts, or hostile path mutation.
 
 **Gate unchanged:** `LQC_MN001_OFFLINE_TEST_APPROVED=0`; dependency initialization and isolated-runner authorization remain outstanding. MN-001 IN PROGRESS / MAINNET NO-GO.
+
+## FIFO regression allowlist reconciliation (2026-11-19)
+
+- The Linux-only `cmd/lqcd/offline_file_linux_test.go` declares `TestReadBoundedOfflineFileFIFO`. Its synthetic named-pipe fixture has no writer and expects `readBoundedOfflineFile` to reject it without blocking. This is source review, **not runtime PASS**.
+- `scripts/mn001-offline-regression-candidate.sh` allowlists two `cmd/lqcd` test names: `TestOfflineMainnetDraftCLI` and `TestReadBoundedOfflineFile`. The FIFO fixture is **not selected**. Approval and execution of the existing eight-test candidate would leave FIFO untested.
+- Do **not** silently expand the eight-test allowlist. Treat FIFO as a separately proposed ninth candidate requiring explicit scope review, dependency initialization review, isolated Linux runner policy, bounded execution and approval before execution.
+- GitHub Actions [run 44488847740](https://github.com/LQC-labs/LQC-Mainnet-Development/actions/runs/44488847740) succeeded on `dfe32ef1`; it supplies preflight and compile evidence, **not** runtime evidence for FIFO or the eight candidate tests.
+- Retain `LQC_MN001_OFFLINE_TEST_APPROVED=0`, the GitHub Actions execution prohibition, PR Draft and MN-001 IN PROGRESS / MAINNET NO-GO.
