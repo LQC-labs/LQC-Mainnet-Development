@@ -56,3 +56,17 @@ Direct upstream source inspection at pinned `github.com/cosmos/evm v0.7.3`:
 **Gate decision:** Keep candidate execution NOT AUTHORIZED. Review the node-home helper and tracer imports; record immutable dependency closure and isolation proof before proposing explicit approval. Do not conflate passing preflight CI with these unexecuted tests.
 
 CI [44501410374](https://github.com/LQC-labs/LQC-Mainnet-Development/actions/runs/44501410374) completed SUCCESS for baseline `a08ae151`; it did not execute the candidate tests.
+
+## Pinned upstream initialization trace (2026-11-19, continued)
+
+**Version resolution:** `go.mod` pins `github.com/cosmos/cosmos-sdk v0.54.3`, `github.com/cosmos/evm v0.7.3`, and separately `github.com/cosmos/evm/evmd v0.0.0-20260903174530-c3ae9067a7ea`. It replaces `github.com/ethereum/go-ethereum` with `github.com/cosmos/go-ethereum v1.17.2-cosmos-0`. Review must follow these resolved modules, not unmodified upstream go-ethereum.
+
+**Home initialization:** `cosmos-sdk/client/v2/helpers/home.go` at `v0.54.3` defines `GetNodeHomeDirectory(name)`: checks `--home` / `--home=...` in process arguments, then `NODE_HOME` (or prefixed `_HOME`), then `os.UserHomeDir()`. The inspected helper contains no file write or network call. `evmd/config/config.go` wraps this in `MustGetDefaultNodeHome()` and panics on error. `evmd/app.go` initializes this before test bodies when its package is imported.
+
+**Tracer registration:** `cosmos/go-ethereum` at `v1.17.2-cosmos-0` contains `init()` in `eth/tracers/js/goja.go`, `eth/tracers/native/4byte.go`, `eth/tracers/native/call.go`, and `eth/tracers/native/noop.go`. Native initializers register tracer constructors in `tracers.DefaultDirectory`. JS initializer calls `jsassets.Load()`, panics on error, and registers built-in tracer sources.
+
+**Embedded JS assets:** `eth/tracers/js/internal/tracers/tracers.go` uses `//go:embed *.js` and `embed.FS`. Its `Load()` reads the embedded filesystem with `fs.WalkDir` / `fs.ReadFile`; no network or external file read appears in this function. This is **limited evidence for this loader only**, not a guarantee about all tracer dependency initializers.
+
+**Security implications:** The `-run` allowlist does not suppress imported package initializers. Confirmed pre-test process-global changes and environment/argument reads require isolation. No evidence in these specific source paths establishes network access, validator signing, or node startup. Transitive dependency inventory, process isolation, approval enforcement, and execution evidence remain BLOCKED.
+
+**CI distinction:** [44503116037](https://github.com/LQC-labs/LQC-Mainnet-Development/actions/runs/44503116037) SUCCESS for `f24c3608` covers the existing preflight/dry-run workflow, not the eight candidate tests.
