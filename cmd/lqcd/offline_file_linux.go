@@ -12,10 +12,11 @@ import (
 )
 
 // openOfflineDraftFile rejects symlinks in every path component atomically.
+// O_NONBLOCK avoids waiting on FIFO inputs before post-open regular-file checks.
 // Unsupported kernels fail closed; no insecure fallback to os.Open.
 func openOfflineDraftFile(path string) (*os.File, error) {
 	fd, err := unix.Openat2(unix.AT_FDCWD, path, &unix.OpenHow{
-		Flags:   unix.O_RDONLY | unix.O_CLOEXEC,
+		Flags:   unix.O_RDONLY | unix.O_CLOEXEC | unix.O_NONBLOCK,
 		Resolve: unix.RESOLVE_NO_SYMLINKS,
 	})
 	if err != nil {
