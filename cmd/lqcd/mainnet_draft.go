@@ -19,7 +19,7 @@ const maxOfflineDraftBytes int64 = 8 << 20
 // readBoundedOfflineFile rejects oversized inputs before JSON decoding.
 // A regular file or pipe cannot consume unbounded memory.
 func readBoundedOfflineFile(path string) ([]byte, error) {
-	f, err := os.Open(path)
+	// Reject symlink inputs before opening; this does not eliminate concurrent path replacement.\n\tpathInfo, err := os.Lstat(path)\n\tif err != nil { return nil, err }\n\tif !pathInfo.Mode().IsRegular() { return nil, fmt.Errorf("offline input path must be a regular file, not a symlink") }\n\tf, err := os.Open(path)
 	if err != nil { return nil, err }
 	defer f.Close()
 	info, err := f.Stat()
