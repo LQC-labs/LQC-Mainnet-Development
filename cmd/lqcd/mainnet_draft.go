@@ -7,7 +7,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"os"
 
 	chainconfig "github.com/LQC-labs/LQC-Mainnet-Development/chain/config"
 	"github.com/LQC-labs/LQC-Mainnet-Development/genesis"
@@ -17,13 +16,10 @@ import (
 const maxOfflineDraftBytes int64 = 8 << 20
 
 // readBoundedOfflineFile rejects oversized inputs before JSON decoding.
-// A regular file or pipe cannot consume unbounded memory.
+// Only regular files are accepted; reads are bounded to 8 MiB.
 func readBoundedOfflineFile(path string) ([]byte, error) {
-	// Reject symlink inputs before opening; this does not eliminate concurrent path replacement.
-	pathInfo, err := os.Lstat(path)
-	if err != nil { return nil, err }
-	if !pathInfo.Mode().IsRegular() { return nil, fmt.Errorf("offline input path must be a regular file, not a symlink") }
-	f, err := os.Open(path)
+	// Open atomically with no-symlink resolution; reject unsupported platforms.
+	f, err := openOfflineDraftFile(path)
 	if err != nil { return nil, err }
 	defer f.Close()
 	info, err := f.Stat()
