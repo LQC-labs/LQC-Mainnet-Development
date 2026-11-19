@@ -19,9 +19,10 @@ if [[ "${LQC_MN001_OFFLINE_TEST_APPROVED:-0}" != '1' ]]; then
   exit 0
 fi
 
+export GOTOOLCHAIN=local GOWORK=off
+# Prevent automatic toolchain download/switch before the first go invocation.
 test "$(go env GOOS)" = linux
 test "$(go env GOVERSION)" = go1.25.9
-export GOTOOLCHAIN=local GOWORK=off
 export LQC_RUN_NATIVE_EVM=0 LQC_RUN_EVM_CONTRACT=0
 export LQC_RUN_EVMRPC_INTEGRATION=0 LQC_RUN_RESTART_REGRESSION=0
 export LQC_RUN_ADMISSION_REGRESSION=0 LQC_RUN_FLOW_MINIMAL=0
