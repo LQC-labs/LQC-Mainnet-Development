@@ -14,7 +14,7 @@ expected_cli='cli_tests='"'"'^(TestOfflineMainnetDraftCLI|TestReadBoundedOffline
 # All three assignments must appear exactly once. Merely finding an
 # expected line is insufficient if a later assignment overrides it.
 for variable in chain_tests genesis_tests cli_tests; do
-  count="$(grep -Ec "^\\s*${variable}=" "$candidate" || true)"
+  count="$(grep -Ec "^[[:space:]]*${variable}=" "$candidate" || true)"
   if [[ "$count" != 1 ]]; then
     printf 'BLOCKED: expected one %s assignment, found %s.\n' "$variable" "$count" >&2
     exit 1
