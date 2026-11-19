@@ -57,3 +57,42 @@ independent evidence before any operational security PASS.
 
 allow_signing=false; recovery_authorized=false; signing_history_complete=false.
 Public mainnet remains NO-GO.
+
+## MN-001 current-branch CI evidence reconciliation (2026-11-19)
+
+This section applies specifically to `integration/mn001-v29-validation-20261117`
+and supersedes the historical current-source workflow description above **for
+this branch only**. The earlier section records the isolated candidate's state
+at its creation; it is not a claim about today's workflow configuration.
+
+- `.github/workflows/lqc-core-current-linux.yml` now invokes
+  `bash scripts/security-preflight-linux.sh`. That script runs exact-name
+  allowlists for securityaudit, mvpsafety, and selected chain/config, app,
+  genesis, and node tests, repeats those selections with `-race`, and compiles
+  all Go package test binaries without executing their test bodies.
+- The allowlisted runs do not establish a full-suite or full operational
+  security PASS. The current allowlist excludes newly introduced offline
+  mainnet draft tests. In particular, `./cmd/lqcd` is compile-only in this
+  workflow, not an executed allowlisted test package.
+- The eight identified offline regression candidates are
+  `TestRuntimeDevnetCompatibility`, `TestExplicitRuntimeValidation`,
+  `TestMainnetProposalOfflineValidation`,
+  `TestMainnetProfileRejectsDuplicateKeys`,
+  `TestMainnetDraftOfflinePreflight`,
+  `TestMainnetDraftRejectsDuplicateJSONKeys`,
+  `TestOfflineMainnetDraftCLI`, and `TestReadBoundedOfflineFile`.
+  These are **candidates**, not newly approved tests. Review package
+  initialization, dependencies, and test call graphs before expanding any
+  exact-name allowlist. Keep signing, validator startup, subprocess, and
+  network-sensitive tests quarantined pending separate authorization.
+- The GitHub Actions Core run 44046014343 reported success at commit
+  `a809a852dd36c3ad18727f7cbc450d211f31be05`; this is evidence only
+  for the jobs and checks actually executed at that commit. No new CI run
+  or eight-test PASS is asserted by this documentation change.
+- The sibling P0-A/P0-B Go 1.26.11 module is not integrated into the main
+  module. Its source location, separate mock-only CI, full Race evidence,
+  mTLS identity, RBAC, and real operational controls remain unverified here.
+
+MN-001 remains IN PROGRESS. Do not advance to MN-002 or authorize public
+mainnet activation without the separately required evidence. Public mainnet
+remains NO-GO; `allow_signing=false`.
