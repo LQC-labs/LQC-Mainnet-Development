@@ -98,11 +98,18 @@ jobs:
           bash -n scripts/mn001-approval-status.sh
           report="$(mktemp)"
           trap 'rm -f -- "$report"' EXIT
-          if bash scripts/mn001-approval-status.sh >"$report" 2>&1; then
-            printf '%s\n' 'ERROR: offline MN-001 approval gate unexpectedly returned success.' >&2
+          # A missing interpreter or crashed status script is NOT an expected
+          # fail-closed result. Only the intentional exit code 1 is accepted.
+          set +e
+          GITHUB_ACTIONS=false LQC_MN001_OFFLINE_TEST_APPROVED=1 \
+            bash scripts/mn001-approval-status.sh >"$report" 2>&1
+          status=$?
+          set -e
+          cat "$report"
+          if [[ "$status" -ne 1 ]]; then
+            printf 'ERROR: unexpected offline approval status exit code: %s\n' "$status" >&2
             exit 1
           fi
-          cat "$report"
           grep -Fxq 'MN001_GATE=NO_GO' "$report"
           grep -Fxq 'NETWORK_ISOLATION=BLOCKED' "$report"
           grep -Fxq 'FILESYSTEM_ISOLATION=BLOCKED' "$report"
