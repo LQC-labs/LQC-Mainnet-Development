@@ -13,7 +13,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  security-preflight:
+  verify-scripts:
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     env:
