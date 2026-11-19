@@ -32,7 +32,7 @@ if ! timeout --signal=TERM --kill-after=2s 12s \
     test "$child_netns" != "$LQC_MN001_HOST_NETNS"
     test "$(id -u)" = 0
     test -z "$(ls -A /sys/class/net 2>/dev/null | grep -v "^lo$" || true)"
-    printf "%s\\n" "NETWORK_NAMESPACE_PROBE=PASS"
+    printf "%s\n" "NETWORK_NAMESPACE_PROBE=PASS"
   '; then
   printf '%s\n' 'BLOCKED: network namespace probe failed.' >&2
   exit 1
