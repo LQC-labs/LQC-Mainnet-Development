@@ -50,6 +50,33 @@ jobs:
           output="$(bash scripts/mn001-offline-regression-candidate.sh)"
           printf '%s\n' "$output"
           grep -Fq 'no tests executed' <<< "$output"
+      - name: Verify forced approval is blocked without invoking Go
+        shell: bash
+        run: |
+          set -euo pipefail
+          # Use a PATH shim to detect any attempted Go invocation. This does
+          # not run candidate tests, even if a future regression reaches Go.
+          probe_dir="$(mktemp -d)"
+          trap 'rm -rf -- "$probe_dir"' EXIT
+          cat > "$probe_dir/go" <<'SH'
+          #!/usr/bin/env bash
+          printf 'invoked\\n' >> "$LQC_GO_PROBE_LOG"
+          exit 99
+          SH
+          chmod 700 "$probe_dir/go"
+          export LQC_GO_PROBE_LOG="$probe_dir/go-invocations"
+          output_file="$probe_dir/blocked-output"
+          if PATH="$probe_dir:$PATH" GITHUB_ACTIONS=false LQC_MN001_OFFLINE_TEST_APPROVED=1 \\
+            bash scripts/mn001-offline-regression-candidate.sh >"$output_file" 2>&1; then
+            printf '%s\\n' 'ERROR: forced approval unexpectedly succeeded.' >&2
+            exit 1
+          fi
+          cat "$output_file"
+          grep -Fq 'candidate execution remains BLOCKED' "$output_file"
+          if [[ -e "$LQC_GO_PROBE_LOG" ]]; then
+            printf '%s\\n' 'ERROR: Go invocation attempted despite fail-closed gate.' >&2
+            exit 1
+          fi
       - name: Run reviewed existing security preflight
         shell: bash
         run: |
