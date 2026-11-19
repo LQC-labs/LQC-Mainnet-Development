@@ -119,6 +119,16 @@ jobs:
           grep -Fxq 'USER_TEST_AUTHORIZATION=NOT_GRANTED' "$report"
           grep -Fxq 'MN001_CANDIDATE_TESTS=NOT_EXECUTED' "$report"
           grep -Fxq 'MAINNET=NO_GO' "$report"
+      - name: Verify frozen MN-001 candidate scope without executing Go
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash -n scripts/mn001-offline-scope-contract.sh
+          report="$(bash scripts/mn001-offline-scope-contract.sh)"
+          printf '%s\n' "$report"
+          grep -Fxq 'RESULT=STATIC_SCOPE_INVENTORY_ONLY' <<< "$report"
+          grep -Fxq 'CANDIDATE_TEST_COUNT=8' <<< "$report"
+          grep -Fxq 'MN001_GATE=NO_GO' <<< "$report"
       - name: Run reviewed existing security preflight
         shell: bash
         run: |
