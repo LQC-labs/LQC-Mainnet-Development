@@ -41,3 +41,18 @@ The Linux-only `TestReadBoundedOfflineFileFIFO` is **not** in the existing eight
 ## Gate
 
 **Dependency initialization: NOT VERIFIED. Candidate execution: NOT AUTHORIZED.** Do not turn on the approval flag, execute the candidate tests, merge Draft PR #3, proceed to MN-002, or activate mainnet. Keep **MN-001 IN PROGRESS / MAINNET NO-GO**.
+
+## Confirmed upstream package initialization effect (2026-11-19)
+
+Direct upstream source inspection at pinned `github.com/cosmos/evm v0.7.3`:
+
+- `evmd/app.go` defines `func init()` that sets `sdk.DefaultPowerReduction = utils.AttoPowerReduction` and assigns `defaultNodeHome = evmconfig.MustGetDefaultNodeHome()`.
+- `evmd/app.go` imports `github.com/ethereum/go-ethereum/eth/tracers/js` and `.../native` with blank imports, triggering their package initialization/registration paths. Their transitive side effects are **not yet fully reviewed**.
+- `evmd/config/config.go` defines `MustGetDefaultNodeHome()`, which calls `clienthelpers.GetNodeHomeDirectory(".evmd")` and panics on error. This is an initialization-time dependency on host/environment state; the exact helper's behavior remains to be inspected.
+- The LQC `app/app.go` imports `github.com/cosmos/evm/evmd`, and `cmd/lqcd/main.go` and `genesis/genesis.go` import local `app`. Therefore the `evmd` initializer is **reachable during package initialization** for the `cmd/lqcd` and `genesis` test binaries, independent of `-run` selection.
+- This is **positive evidence of process-global mutation before selected test bodies run**. It is not evidence of node startup, network access, validator signing, or test runtime PASS.
+- `chain/config` selected tests do not directly import local `app` through the inspected `chain/config` production files; their complete transitive import graph still requires independent verification.
+
+**Gate decision:** Keep candidate execution NOT AUTHORIZED. Review the node-home helper and tracer imports; record immutable dependency closure and isolation proof before proposing explicit approval. Do not conflate passing preflight CI with these unexecuted tests.
+
+CI [44501410374](https://github.com/LQC-labs/LQC-Mainnet-Development/actions/runs/44501410374) completed SUCCESS for baseline `a08ae151`; it did not execute the candidate tests.
