@@ -31,7 +31,12 @@ if ! timeout --signal=TERM --kill-after=2s 12s \
     child_netns="$(readlink /proc/self/ns/net)"
     test "$child_netns" != "$LQC_MN001_HOST_NETNS"
     test "$(id -u)" = 0
-    test -z "$(ls -A /sys/class/net 2>/dev/null | grep -v "^lo$" || true)"
+    test -d /sys/class/net
+    # Never suppress interface enumeration failures: an unreadable network
+    # inventory is BLOCKED, not proof of isolation.
+    interfaces="$(find /sys/class/net -mindepth 1 -maxdepth 1 -printf "%f\\n")" || exit 1
+    test -n "$interfaces"
+    test "$interfaces" = lo
     printf "%s\n" "NETWORK_NAMESPACE_PROBE=PASS"
   '; then
   printf '%s\n' 'BLOCKED: network namespace probe failed.' >&2
