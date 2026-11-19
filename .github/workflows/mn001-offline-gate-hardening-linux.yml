@@ -13,7 +13,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  verify-scripts:
+  security-preflight:
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     env:
@@ -91,9 +91,22 @@ jobs:
             printf '%s\n' 'ERROR: inventory script contains an execution command.' >&2
             exit 1
           fi
+      - name: Run reviewed existing security preflight
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash scripts/security-preflight-linux.sh
+  mn001-approval-gate:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 3
+    env:
+      LQC_MN001_OFFLINE_TEST_APPROVED: '0'
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
       - name: Probe Linux network namespace isolation (fail closed)
         id: network_probe
-        continue-on-error: true
         shell: bash
         run: |
           set -euo pipefail
@@ -111,15 +124,13 @@ jobs:
           grep -Fxq 'NETWORK_NAMESPACE_PROBE=PASS' "$report"
           grep -Fxq 'RESULT=NETWORK_PROBE_ONLY' "$report"
           grep -Fq 'BLOCKED: filesystem, credentials' "$report"
-      - name: Run reviewed existing security preflight
+      - name: Keep MN-001 NO-GO without independent isolation and approval evidence
+        if: ${{ always() }}
         shell: bash
         run: |
           set -euo pipefail
-          bash scripts/security-preflight-linux.sh
-      - name: Enforce network isolation gate after reviewed preflight
-        if: ${{ always() && steps.network_probe.outcome != 'success' }}
-        shell: bash
-        run: |
-          printf '%s\n' 'BLOCKED: GitHub-hosted runner cannot prove network namespace isolation.'
-          printf '%s\n' 'Reviewed preflight was allowed to run independently; candidate tests remain prohibited.'
+          printf '%s\n' 'NETWORK_ISOLATION=BLOCKED'
+          printf '%s\n' 'MN001_GATE=NO_GO'
+          printf '%s\n' 'Independent VM network, filesystem, credentials, resource limits, dependency review, and explicit approval are missing.'
+          printf '%s\n' 'A namespace probe alone cannot authorize MN-001 candidates.'
           exit 1
