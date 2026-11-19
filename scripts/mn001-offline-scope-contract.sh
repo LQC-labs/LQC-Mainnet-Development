@@ -11,6 +11,15 @@ test -f "$candidate" && test -f "$status"
 expected_chain='chain_tests='"'"'^(TestRuntimeDevnetCompatibility|TestExplicitRuntimeValidation)$'"'"''
 expected_genesis='genesis_tests='"'"'^(TestMainnetProposalOfflineValidation|TestMainnetProfileRejectsDuplicateKeys|TestMainnetDraftOfflinePreflight|TestMainnetDraftRejectsDuplicateJSONKeys)$'"'"''
 expected_cli='cli_tests='"'"'^(TestOfflineMainnetDraftCLI|TestReadBoundedOfflineFile)$'"'"''
+# All three assignments must appear exactly once. Merely finding an
+# expected line is insufficient if a later assignment overrides it.
+for variable in chain_tests genesis_tests cli_tests; do
+  count="$(grep -Ec "^\\s*${variable}=" "$candidate" || true)"
+  if [[ "$count" != 1 ]]; then
+    printf 'BLOCKED: expected one %s assignment, found %s.\n' "$variable" "$count" >&2
+    exit 1
+  fi
+done
 for expected in "$expected_chain" "$expected_genesis" "$expected_cli"; do
   if ! grep -Fxq -- "$expected" "$candidate"; then
     printf '%s\n' 'BLOCKED: frozen MN-001 eight-test scope changed.' >&2
