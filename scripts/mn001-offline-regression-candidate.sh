@@ -22,7 +22,7 @@ fi
 # Defense in depth: a CI environment-variable override is not execution approval.
 # A separate reviewed workflow and explicit authorization are required before CI execution.
 if [[ "${GITHUB_ACTIONS:-false}" == 'true' ]]; then
-  printf '%s\\n' 'ERROR: MN-001 candidate execution is prohibited in GitHub Actions pending dependency-init approval.' >&2
+  printf '%s\n' 'ERROR: MN-001 candidate execution is prohibited in GitHub Actions pending dependency-init approval.' >&2
   exit 1
 fi
 
