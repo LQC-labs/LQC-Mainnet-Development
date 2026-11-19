@@ -91,6 +91,24 @@ jobs:
             printf '%s\n' 'ERROR: inventory script contains an execution command.' >&2
             exit 1
           fi
+      - name: Probe Linux network namespace isolation (fail closed)
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash -n scripts/mn001-network-namespace-probe.sh
+          # This invokes only a disposable namespace identity probe, not
+          # the MN-001 candidate tests or any blockchain process.
+          report="$(mktemp)"
+          trap 'rm -f -- "$report"' EXIT
+          if ! bash scripts/mn001-network-namespace-probe.sh >"$report" 2>&1; then
+            cat "$report"
+            printf '%s\n' 'BLOCKED: namespace creation or validation failed; no isolation PASS.' >&2
+            exit 1
+          fi
+          cat "$report"
+          grep -Fxq 'NETWORK_NAMESPACE_PROBE=PASS' "$report"
+          grep -Fxq 'RESULT=NETWORK_PROBE_ONLY' "$report"
+          grep -Fq 'BLOCKED: filesystem, credentials' "$report"
       - name: Run reviewed existing security preflight
         shell: bash
         run: |
