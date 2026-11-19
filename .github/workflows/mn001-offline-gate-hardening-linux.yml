@@ -77,6 +77,20 @@ jobs:
             printf '%s\n' 'ERROR: Go invocation attempted despite fail-closed gate.' >&2
             exit 1
           fi
+      - name: Verify inventory-only Linux isolation capability report
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash -n scripts/mn001-isolation-capability-inventory.sh
+          report="$(bash scripts/mn001-isolation-capability-inventory.sh)"
+          printf '%s\n' "$report"
+          grep -Fxq 'RESULT=INVENTORY_ONLY' <<< "$report"
+          grep -Fq 'BLOCKED: no isolated runner' <<< "$report"
+          # This stage inventories host capabilities only; no candidate execution.
+          if grep -Eq '^[[:space:]]*(go[[:space:]]+test|unshare[[:space:]]|bwrap[[:space:]])' scripts/mn001-isolation-capability-inventory.sh; then
+            printf '%s\n' 'ERROR: inventory script contains an execution command.' >&2
+            exit 1
+          fi
       - name: Run reviewed existing security preflight
         shell: bash
         run: |
