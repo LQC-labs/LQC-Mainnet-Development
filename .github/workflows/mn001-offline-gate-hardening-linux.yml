@@ -129,6 +129,15 @@ jobs:
           grep -Fxq 'RESULT=STATIC_SCOPE_INVENTORY_ONLY' <<< "$report"
           grep -Fxq 'CANDIDATE_TEST_COUNT=8' <<< "$report"
           grep -Fxq 'MN001_GATE=NO_GO' <<< "$report"
+      - name: Exercise static scope contract mutations (no candidate execution)
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash -n scripts/mn001-scope-contract-selftest.sh
+          report="$(bash scripts/mn001-scope-contract-selftest.sh)"
+          printf '%s\n' "$report"
+          grep -Fxq 'RESULT=STATIC_CONTRACT_MUTATION_CHECKS_PASSED' <<< "$report"
+          grep -Fxq 'MN001_GATE=NO_GO' <<< "$report"
       - name: Run reviewed existing security preflight
         shell: bash
         run: |
