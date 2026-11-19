@@ -1,0 +1,136 @@
+name: MN-001 offline gate hardening verification
+
+on:
+  push:
+    branches:
+      - integration/mn001-offline-gate-hardening-20261119
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mn001-offline-gate-hardening-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  security-preflight:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      GOTOOLCHAIN: local
+      GOWORK: 'off'
+      LQC_MN001_OFFLINE_TEST_APPROVED: '0'
+      LQC_RUN_NATIVE_EVM: '0'
+      LQC_RUN_EVM_CONTRACT: '0'
+      LQC_RUN_EVMRPC_INTEGRATION: '0'
+      LQC_RUN_RESTART_REGRESSION: '0'
+      LQC_RUN_ADMISSION_REGRESSION: '0'
+      LQC_RUN_FLOW_MINIMAL: '0'
+      LQC_RUN_CLUSTER: '0'
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
+        with:
+          go-version: '1.25.9'
+          cache: false
+      - name: Verify local Linux toolchain and script syntax
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(go env GOOS)" = linux
+          test "$(go env GOVERSION)" = go1.25.9
+          bash -n scripts/security-preflight-linux.sh
+          bash -n scripts/mn001-offline-regression-candidate.sh
+      - name: Verify offline candidate remains dry-run
+        shell: bash
+        run: |
+          set -euo pipefail
+          output="$(bash scripts/mn001-offline-regression-candidate.sh)"
+          printf '%s\n' "$output"
+          grep -Fq 'no tests executed' <<< "$output"
+      - name: Verify forced approval is blocked without invoking Go
+        shell: bash
+        run: |
+          set -euo pipefail
+          # Use a PATH shim to detect any attempted Go invocation. This does
+          # not run candidate tests, even if a future regression reaches Go.
+          probe_dir="$(mktemp -d)"
+          trap 'rm -rf -- "$probe_dir"' EXIT
+          cat > "$probe_dir/go" <<'SH'
+          #!/usr/bin/env bash
+          printf 'invoked\n' >> "$LQC_GO_PROBE_LOG"
+          exit 99
+          SH
+          chmod 700 "$probe_dir/go"
+          export LQC_GO_PROBE_LOG="$probe_dir/go-invocations"
+          output_file="$probe_dir/blocked-output"
+          if PATH="$probe_dir:$PATH" GITHUB_ACTIONS=false LQC_MN001_OFFLINE_TEST_APPROVED=1 \
+            bash scripts/mn001-offline-regression-candidate.sh >"$output_file" 2>&1; then
+            printf '%s\n' 'ERROR: forced approval unexpectedly succeeded.' >&2
+            exit 1
+          fi
+          cat "$output_file"
+          grep -Fq 'candidate execution remains BLOCKED' "$output_file"
+          if [[ -e "$LQC_GO_PROBE_LOG" ]]; then
+            printf '%s\n' 'ERROR: Go invocation attempted despite fail-closed gate.' >&2
+            exit 1
+          fi
+      - name: Verify inventory-only Linux isolation capability report
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash -n scripts/mn001-isolation-capability-inventory.sh
+          report="$(bash scripts/mn001-isolation-capability-inventory.sh)"
+          printf '%s\n' "$report"
+          grep -Fxq 'RESULT=INVENTORY_ONLY' <<< "$report"
+          grep -Fq 'BLOCKED: no isolated runner' <<< "$report"
+          # This stage inventories host capabilities only; no candidate execution.
+          if grep -Eq '^[[:space:]]*(go[[:space:]]+test|unshare[[:space:]]|bwrap[[:space:]])' scripts/mn001-isolation-capability-inventory.sh; then
+            printf '%s\n' 'ERROR: inventory script contains an execution command.' >&2
+            exit 1
+          fi
+      - name: Run reviewed existing security preflight
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash scripts/security-preflight-linux.sh
+  mn001-approval-gate:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 3
+    env:
+      LQC_MN001_OFFLINE_TEST_APPROVED: '0'
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - name: Probe Linux network namespace isolation (fail closed)
+        id: network_probe
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash -n scripts/mn001-network-namespace-probe.sh
+          # This invokes only a disposable namespace identity probe, not
+          # the MN-001 candidate tests or any blockchain process.
+          report="$(mktemp)"
+          trap 'rm -f -- "$report"' EXIT
+          if ! bash scripts/mn001-network-namespace-probe.sh >"$report" 2>&1; then
+            cat "$report"
+            printf '%s\n' 'BLOCKED: namespace creation or validation failed; no isolation PASS.' >&2
+            exit 1
+          fi
+          cat "$report"
+          grep -Fxq 'NETWORK_NAMESPACE_PROBE=PASS' "$report"
+          grep -Fxq 'RESULT=NETWORK_PROBE_ONLY' "$report"
+          grep -Fq 'BLOCKED: filesystem, credentials' "$report"
+      - name: Keep MN-001 NO-GO without independent isolation and approval evidence
+        if: ${{ always() }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          printf '%s\n' 'NETWORK_ISOLATION=BLOCKED'
+          printf '%s\n' 'MN001_GATE=NO_GO'
+          printf '%s\n' 'Independent VM network, filesystem, credentials, resource limits, dependency review, and explicit approval are missing.'
+          printf '%s\n' 'A namespace probe alone cannot authorize MN-001 candidates.'
+          exit 1

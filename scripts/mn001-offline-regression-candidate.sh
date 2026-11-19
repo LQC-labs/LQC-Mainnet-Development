@@ -19,9 +19,24 @@ if [[ "${LQC_MN001_OFFLINE_TEST_APPROVED:-0}" != '1' ]]; then
   exit 0
 fi
 
+# Defense in depth: a CI environment-variable override is not execution approval.
+# A separate reviewed workflow and explicit authorization are required before CI execution.
+if [[ "${GITHUB_ACTIONS:-false}" == 'true' ]]; then
+  printf '%s\n' 'ERROR: MN-001 candidate execution is prohibited in GitHub Actions pending dependency-init approval.' >&2
+  exit 1
+fi
+
+# Fail closed until an independently reviewed isolated executor exists.
+# This guard is intentionally unconditional: an environment variable, local
+# approval flag, or CI override is NOT proof of user authorization or isolation.
+# Do not remove this block without a separate approved execution-gate change.
+printf '%s\n' 'ERROR: MN-001 candidate execution remains BLOCKED: isolated executor and approval evidence are not implemented.' >&2
+exit 1
+
+export GOTOOLCHAIN=local GOWORK=off
+# Prevent automatic toolchain download/switch before the first go invocation.
 test "$(go env GOOS)" = linux
 test "$(go env GOVERSION)" = go1.25.9
-export GOTOOLCHAIN=local GOWORK=off
 export LQC_RUN_NATIVE_EVM=0 LQC_RUN_EVM_CONTRACT=0
 export LQC_RUN_EVMRPC_INTEGRATION=0 LQC_RUN_RESTART_REGRESSION=0
 export LQC_RUN_ADMISSION_REGRESSION=0 LQC_RUN_FLOW_MINIMAL=0

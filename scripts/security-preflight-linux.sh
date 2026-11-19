@@ -1,9 +1,10 @@
 #!/usr/bin/env bash
 set -euo pipefail
 cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.."
+export GOTOOLCHAIN=local GOWORK=off
+# Pin the local toolchain before any go invocation, including version checks.
 test "$(go env GOVERSION)" = go1.25.9
 test "$(go env GOOS)" = linux
-export GOTOOLCHAIN=local GOWORK=off
 export LQC_RUN_NATIVE_EVM=0 LQC_RUN_EVM_CONTRACT=0
 export LQC_RUN_EVMRPC_INTEGRATION=0 LQC_RUN_RESTART_REGRESSION=0
 export LQC_RUN_ADMISSION_REGRESSION=0 LQC_RUN_FLOW_MINIMAL=0
