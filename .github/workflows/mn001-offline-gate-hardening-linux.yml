@@ -1,0 +1,57 @@
+name: MN-001 offline gate hardening verification
+
+on:
+  push:
+    branches:
+      - integration/mn001-offline-gate-hardening-20261119
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mn001-offline-gate-hardening-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify-scripts:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      GOTOOLCHAIN: local
+      GOWORK: 'off'
+      LQC_MN001_OFFLINE_TEST_APPROVED: '0'
+      LQC_RUN_NATIVE_EVM: '0'
+      LQC_RUN_EVM_CONTRACT: '0'
+      LQC_RUN_EVMRPC_INTEGRATION: '0'
+      LQC_RUN_RESTART_REGRESSION: '0'
+      LQC_RUN_ADMISSION_REGRESSION: '0'
+      LQC_RUN_FLOW_MINIMAL: '0'
+      LQC_RUN_CLUSTER: '0'
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
+        with:
+          go-version: '1.25.9'
+          cache: false
+      - name: Verify local Linux toolchain and script syntax
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(go env GOOS)" = linux
+          test "$(go env GOVERSION)" = go1.25.9
+          bash -n scripts/security-preflight-linux.sh
+          bash -n scripts/mn001-offline-regression-candidate.sh
+      - name: Verify offline candidate remains dry-run
+        shell: bash
+        run: |
+          set -euo pipefail
+          output="$(bash scripts/mn001-offline-regression-candidate.sh)"
+          printf '%s\n' "$output"
+          grep -Fq 'no tests executed' <<< "$output"
+      - name: Run reviewed existing security preflight
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash scripts/security-preflight-linux.sh
