@@ -62,12 +62,14 @@ class EvidenceCheckerTests(unittest.TestCase):
 
     def test_child_open_error_closes_parent_once(self):
         real_open, real_close = os.open, os.close
-        closed = []
+        opened, closed = [], []
 
         def fail_component(name, flags, *args, **kwargs):
             if name == "missing":
                 raise OSError("injected child open failure")
-            return real_open(name, flags, *args, **kwargs)
+            fd = real_open(name, flags, *args, **kwargs)
+            opened.append(fd)
+            return fd
 
         def record_close(fd):
             closed.append(fd)
@@ -77,8 +79,10 @@ class EvidenceCheckerTests(unittest.TestCase):
             with patch.object(module.os, "close", side_effect=record_close):
                 with self.assertRaises(OSError):
                     module.open_evidence_directory(self.root / "missing")
-        self.assertGreaterEqual(len(closed), 1)
-        self.assertEqual(len(set(closed)), len(closed))
+        # Linux is free to reuse descriptor numbers once a prior FD closes.
+        # Verify every successfully opened descriptor was closed once.
+        self.assertGreaterEqual(len(opened), 1)
+        self.assertEqual(closed, opened)
 
     def test_synthetic_format_is_valid_but_never_authorized(self):
         self.assertEqual(module.check(self.root), 0)
