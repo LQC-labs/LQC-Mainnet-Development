@@ -193,10 +193,17 @@ def check(directory):
     print("This is file-integrity evidence only; no isolation proof or execution authorization.")
     return 0
 
-if __name__ == "__main__":
-    if len(sys.argv) != 2:
-        sys.exit(blocked("usage: mn001-evidence-bundle-check.py EVIDENCE_DIRECTORY"))
+def cli(argv):
+    """Emit a single fail-closed verdict, including Python exception notes."""
+    if len(argv) != 1:
+        return blocked("usage: mn001-evidence-bundle-check.py EVIDENCE_DIRECTORY")
     try:
-        sys.exit(check(sys.argv[1]))
+        return check(argv[0])
     except (OSError, RuntimeError) as exc:
-        sys.exit(blocked("failed to read evidence bundle: " + str(exc)))
+        details = [str(exc)]
+        details.extend(str(note) for note in getattr(exc, "__notes__", ()))
+        return blocked("failed to read evidence bundle: " + "; ".join(details))
+
+
+if __name__ == "__main__":
+    sys.exit(cli(sys.argv[1:]))
