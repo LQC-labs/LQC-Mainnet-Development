@@ -665,6 +665,66 @@ class EvidenceCheckerTests(unittest.TestCase):
         self.assertFalse(module.is_complete_format_success(
             completed.stdout, completed.returncode))
 
+    def test_subprocess_injected_short_stdout_exits_nonzero_without_reissue(self):
+        # Only the synthetic checker runs in the child; no Go, VM or network.
+        source = (
+            "import importlib.util, sys\n"
+            "spec=importlib.util.spec_from_file_location('bundle', sys.argv[1])\n"
+            "mod=importlib.util.module_from_spec(spec)\n"
+            "spec.loader.exec_module(mod)\n"
+            "class ShortStdout:\n"
+            " def __init__(self): self.calls=0\n"
+            " def write(self, value):\n"
+            "  self.calls+=1\n"
+            "  sys.__stdout__.write(value[:12]); sys.__stdout__.flush()\n"
+            "  return 12\n"
+            " def flush(self): pass\n"
+            "sys.stdout=ShortStdout()\n"
+            "sys.exit(mod.cli([sys.argv[2]]))\n"
+        )
+        completed = subprocess.run(
+            [sys.executable, "-c", source, str(CHECKER), str(self.root)],
+            capture_output=True, timeout=10, check=False,
+        )
+        self.assertNotEqual(completed.returncode, 0)
+        self.assertEqual(completed.stdout, b"MN001_GATE=N")
+        self.assertNotIn(b"EVIDENCE_FORMAT=VALID", completed.stdout)
+        self.assertNotIn(b"EVIDENCE_FORMAT=BLOCKED", completed.stdout)
+        self.assertIn(b"incomplete evidence success record", completed.stderr)
+        self.assertFalse(module.is_complete_format_success(
+            completed.stdout.decode("ascii"), completed.returncode))
+
+    def test_valid_target_evidence_symlink_rejected_at_open(self):
+        # Link target bytes match the signed-in-bundle checksum; only O_NOFOLLOW
+        # should cause rejection, not a later schema/hash mismatch.
+        victim = self.root / "network_denial.txt"
+        contents = victim.read_bytes()
+        matching = self.root / "matching.txt"
+        matching.write_bytes(contents)
+        victim.unlink()
+        victim.symlink_to(matching)
+        out, err = io.StringIO(), io.StringIO()
+        with redirect_stdout(out), redirect_stderr(err):
+            result = module.cli([str(self.root)])
+        self.assertEqual(result, 1)
+        self.assertIn("Too many levels of symbolic links", err.getvalue())
+        self.assertIn("network_denial.txt", err.getvalue())
+        self.assertEqual(out.getvalue().count("EVIDENCE_FORMAT=BLOCKED"), 1)
+        self.assertNotIn("EVIDENCE_FORMAT=VALID", out.getvalue())
+
+    def test_valid_bundle_root_symlink_rejected_at_open(self):
+        link = self.root.parent / (self.root.name + "-fully-valid-alias")
+        link.symlink_to(self.root, target_is_directory=True)
+        self.addCleanup(link.unlink)
+        # Control proves target is otherwise valid.
+        self.assertEqual(module.evaluate(self.root), (True, None))
+        valid, reason = module.evaluate(link)
+        self.assertFalse(valid)
+        self.assertIn("unsafe evidence directory", reason)
+        self.assertTrue(
+            "Not a directory" in reason or "Too many levels of symbolic links" in reason
+        )
+
     def test_synthetic_format_is_valid_but_never_authorized(self):
         self.assertEqual(module.check(self.root), 0)
 
