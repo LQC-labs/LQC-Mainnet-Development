@@ -232,6 +232,96 @@ class EvidenceCheckerTests(unittest.TestCase):
         self.assertIn("cleanup failure", str(context.exception))
         self.assertEqual(len(tracked), 1)
 
+    def test_unexpected_memory_error_releases_raw_fd(self):
+        real_open, real_close = os.open, os.close
+        directory = real_open(str(self.root), os.O_RDONLY | os.O_DIRECTORY)
+        raw_fds, closed = [], []
+        try:
+            def tracked_open(name, flags, *args, **kwargs):
+                fd = real_open(name, flags, *args, **kwargs)
+                raw_fds.append(fd)
+                return fd
+            def tracked_close(fd):
+                closed.append(fd)
+                real_close(fd)
+            with patch.object(module.os, "open", side_effect=tracked_open):
+                with patch.object(module.os, "fstat", side_effect=MemoryError("injected memory failure")):
+                    with patch.object(module.os, "close", side_effect=tracked_close):
+                        with self.assertRaisesRegex(MemoryError, "memory failure"):
+                            module.read_regular_at(directory, "manifest.json", 65536)
+            self.assertEqual(raw_fds, closed)
+            with self.assertRaises(OSError):
+                os.fstat(raw_fds[0])
+        finally:
+            real_close(directory)
+
+    def test_fdopen_and_close_double_failure_preserves_both(self):
+        real_open, real_close = os.open, os.close
+        directory = real_open(str(self.root), os.O_RDONLY | os.O_DIRECTORY)
+        raw_fds, closed = [], []
+        try:
+            def tracked_open(name, flags, *args, **kwargs):
+                fd = real_open(name, flags, *args, **kwargs)
+                raw_fds.append(fd)
+                return fd
+            def close_with_error(fd):
+                closed.append(fd)
+                real_close(fd)
+                raise OSError("injected cleanup error")
+            with patch.object(module.os, "open", side_effect=tracked_open):
+                with patch.object(module.os, "fdopen", side_effect=OSError("injected fdopen error")):
+                    with patch.object(module.os, "close", side_effect=close_with_error):
+                        with self.assertRaises(OSError) as context:
+                            module.read_regular_at(directory, "manifest.json", 65536)
+            self.assertIn("fdopen error", str(context.exception))
+            self.assertIn("cleanup error", str(context.exception))
+            self.assertEqual(raw_fds, closed)
+        finally:
+            real_close(directory)
+
+    def test_interrupt_releases_raw_fd_before_propagation(self):
+        real_open, real_close = os.open, os.close
+        directory = real_open(str(self.root), os.O_RDONLY | os.O_DIRECTORY)
+        raw_fds, closed = [], []
+        try:
+            def tracked_open(name, flags, *args, **kwargs):
+                fd = real_open(name, flags, *args, **kwargs)
+                raw_fds.append(fd)
+                return fd
+            def tracked_close(fd):
+                closed.append(fd)
+                real_close(fd)
+            with patch.object(module.os, "open", side_effect=tracked_open):
+                with patch.object(module.os, "fstat", side_effect=KeyboardInterrupt()):
+                    with patch.object(module.os, "close", side_effect=tracked_close):
+                        with self.assertRaises(KeyboardInterrupt):
+                            module.read_regular_at(directory, "manifest.json", 65536)
+            self.assertEqual(raw_fds, closed)
+        finally:
+            real_close(directory)
+
+    def test_parent_and_child_close_failures_preserve_both(self):
+        real_open, real_close = os.open, os.close
+        opens, closes = [], []
+        def tracked_open(name, flags, *args, **kwargs):
+            fd = real_open(name, flags, *args, **kwargs)
+            opens.append(fd)
+            return fd
+        def close_with_error(fd):
+            closes.append(fd)
+            real_close(fd)
+            if len(closes) == 1:
+                raise OSError("injected parent close detail")
+            raise OSError("injected child close detail")
+        with patch.object(module.os, "open", side_effect=tracked_open):
+            with patch.object(module.os, "close", side_effect=close_with_error):
+                with self.assertRaises(OSError) as context:
+                    module.open_evidence_directory(self.root)
+        self.assertIn("parent close detail", str(context.exception))
+        self.assertIn("child close detail", str(context.exception))
+        self.assertEqual(len(closes), 2)
+        self.assertEqual(opens[:2], closes)
+
     def test_synthetic_format_is_valid_but_never_authorized(self):
         self.assertEqual(module.check(self.root), 0)
 
