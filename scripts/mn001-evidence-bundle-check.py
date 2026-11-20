@@ -41,38 +41,37 @@ def unique_object_pairs(pairs):
 
 
 def read_regular_at(root_fd, name, maximum):
-    """Read a regular file via dirfd, retaining FD ownership until cleanup."""
+    """Read via dirfd; always release the owned raw FD exactly once."""
     flags = os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK | os.O_CLOEXEC
     fd = os.open(name, flags, dir_fd=root_fd)
-    processing_error = None
-    payload = None
     try:
         info = os.fstat(fd)
         if not stat.S_ISREG(info.st_mode):
             raise ValueError("not a regular evidence file: " + name)
         if info.st_size == 0 or info.st_size > maximum:
             raise ValueError("invalid evidence file size: " + name)
-        # closefd=False keeps one owner even if wrapper construction fails.
+        # The wrapper never owns the original descriptor, even on error.
         with os.fdopen(fd, "rb", closefd=False) as stream:
             payload = stream.read(maximum + 1)
         if not payload or len(payload) > maximum:
             raise ValueError("evidence read exceeds size limit: " + name)
-    except (OSError, ValueError) as exc:
-        processing_error = exc
-    close_error = None
-    try:
-        os.close(fd)  # Never retry a failed Linux close.
-    except OSError as exc:
-        close_error = exc
-    if close_error is not None:
-        if processing_error is not None:
+    except BaseException as processing_error:
+        # Cleanup even for MemoryError, KeyboardInterrupt, SystemExit.
+        try:
+            os.close(fd)
+        except OSError as cleanup_error:
+            if isinstance(processing_error, (KeyboardInterrupt, SystemExit)):
+                processing_error.add_note(
+                    "evidence file cleanup failed: " + str(cleanup_error))
+                raise
             raise OSError("evidence file processing failed: " +
                           str(processing_error) + "; close failed: " +
-                          str(close_error)) from processing_error
-        raise OSError("evidence file close failed: " + str(close_error)) from close_error
-    if processing_error is not None:
-        raise processing_error
-    return payload
+                          str(cleanup_error)) from processing_error
+        raise
+    else:
+        # A Linux close error is fatal, and the FD must not be retried.
+        os.close(fd)
+        return payload
 
 
 def open_evidence_directory(directory):
@@ -99,7 +98,7 @@ def open_evidence_directory(directory):
                 os.close(parent_fd)
             except OSError as exc:
                 # Linux close may already have released parent_fd; never retry.
-                raise OSError("failed to close parent evidence directory") from exc
+                raise OSError("failed to close parent evidence directory: " + str(exc)) from exc
         return fd
     except BaseException as original_error:
         try:
