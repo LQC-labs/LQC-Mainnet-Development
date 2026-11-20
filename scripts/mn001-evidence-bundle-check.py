@@ -153,12 +153,12 @@ def inspect_bundle(root_fd):
             return False, "SHA-256 mismatch for " + category
     return True, None
 
-def check(directory):
+def evaluate(directory):
     # Final verdict must be emitted only after the root descriptor is closed.
     try:
         root_fd = open_evidence_directory(directory)
     except (OSError, ValueError) as exc:
-        return blocked("unsafe evidence directory: " + str(exc))
+        return False, "unsafe evidence directory: " + str(exc)
 
     valid, error = False, None
     cleanup_error = None
@@ -182,10 +182,17 @@ def check(directory):
             cleanup_error = str(exc)
 
     if cleanup_error is not None:
-        return blocked((error + "; " if error else "") +
+        return False, ((error + "; " if error else "") +
                        "evidence directory close failed: " + cleanup_error)
     if not valid:
-        return blocked(error or "evidence validation failed")
+        return False, error or "evidence validation failed"
+    return True, None
+
+def render_verdict(result):
+    """Render once; a failing stream must never trigger another verdict."""
+    valid, error = result
+    if not valid:
+        return blocked(error)
     print("EVIDENCE_FORMAT=VALID")
     print("EVIDENCE_CATEGORIES=8")
     print("MN001_GATE=NO_GO")
@@ -193,17 +200,24 @@ def check(directory):
     print("This is file-integrity evidence only; no isolation proof or execution authorization.")
     return 0
 
-def cli(argv):
-    """Emit a single fail-closed verdict, including Python exception notes."""
-    if len(argv) != 1:
-        return blocked("usage: mn001-evidence-bundle-check.py EVIDENCE_DIRECTORY")
-    try:
-        return check(argv[0])
-    except (OSError, RuntimeError) as exc:
-        details = [str(exc)]
-        details.extend(str(note) for note in getattr(exc, "__notes__", ()))
-        return blocked("failed to read evidence bundle: " + "; ".join(details))
 
+def check(directory):
+    return render_verdict(evaluate(directory))
+
+
+def cli(argv):
+    """Catch evaluation errors only; never catch output stream failures."""
+    if len(argv) != 1:
+        result = False, "usage: mn001-evidence-bundle-check.py EVIDENCE_DIRECTORY"
+    else:
+        try:
+            result = evaluate(argv[0])
+        except (OSError, RuntimeError) as exc:
+            details = [str(exc)]
+            details.extend(str(note) for note in getattr(exc, "__notes__", ()))
+            result = False, "failed to read evidence bundle: " + "; ".join(details)
+    # The emission is OUTSIDE the error conversion handler.
+    return render_verdict(result)
 
 if __name__ == "__main__":
     sys.exit(cli(sys.argv[1:]))
