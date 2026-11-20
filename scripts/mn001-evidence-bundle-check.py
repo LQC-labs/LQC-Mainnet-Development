@@ -56,13 +56,36 @@ def read_regular_at(root_fd, name, maximum):
         return payload
 
 
-def check(directory):
-    # Root entry must be a directory rather than a symlink. Use an open
-    # directory descriptor for all later file opens, not path re-resolution.
+def open_evidence_directory(directory):
+    """Walk each path component from / or cwd without following symlinks.
+
+    The resulting fd pins the selected directory even if its path is renamed.
+    This does not establish trusted ownership of writable parent directories.
+    """
     requested = Path(directory)
-    if requested.is_symlink():
-        return blocked("evidence directory must not be a symlink")
-    root_fd = os.open(requested, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW | os.O_CLOEXEC)
+    if not requested.parts:
+        raise ValueError("empty evidence path")
+    flags = os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW | os.O_CLOEXEC
+    fd = os.open("/" if requested.is_absolute() else ".", flags)
+    try:
+        for component in requested.parts:
+            if component in ("/", "."):
+                continue
+            if component == "..":
+                raise ValueError("parent traversal not permitted in evidence path")
+            next_fd = os.open(component, flags, dir_fd=fd)
+            os.close(fd)
+            fd = next_fd
+        return fd
+    except BaseException:
+        os.close(fd)
+        raise
+
+
+def check(directory):
+    # Traverse every parent directory without symlinks, holding descriptors
+    # rather than resolving the same path again between checks.
+    root_fd = open_evidence_directory(directory)
     try:
         manifest_data = read_regular_at(root_fd, "manifest.json", 65536)
         try:

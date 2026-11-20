@@ -79,6 +79,27 @@ class EvidenceCheckerTests(unittest.TestCase):
         (self.root / "manifest.json").write_text(raw, encoding="utf-8")
         self.assertEqual(module.check(self.root), 1)
 
+    def test_symlink_parent_directory_blocks(self):
+        parent = self.root / "trusted"
+        parent.mkdir()
+        child = parent / "bundle"
+        child.mkdir()
+        alias = self.root / "alias"
+        alias.symlink_to(parent, target_is_directory=True)
+        self.assertEqual(module.check(alias / "bundle"), 1)
+
+    def test_parent_traversal_rejected(self):
+        self.assertEqual(module.check(self.root / ".." / self.root.name), 1)
+
+    def test_nested_real_directory_remains_accepted(self):
+        import shutil
+        nested = self.root / "nested" / "bundle"
+        nested.mkdir(parents=True)
+        for file in self.root.iterdir():
+            if file.is_file():
+                shutil.copyfile(file, nested / file.name)
+        self.assertEqual(module.check(nested), 0)
+
     def test_symlink_root_directory_blocks(self):
         link = self.root.parent / (self.root.name + "-symlink")
         link.symlink_to(self.root, target_is_directory=True)
