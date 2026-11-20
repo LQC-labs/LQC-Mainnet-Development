@@ -85,7 +85,10 @@ def open_evidence_directory(directory):
 def check(directory):
     # Traverse every parent directory without symlinks, holding descriptors
     # rather than resolving the same path again between checks.
-    root_fd = open_evidence_directory(directory)
+    try:
+        root_fd = open_evidence_directory(directory)
+    except (OSError, ValueError) as exc:
+        return blocked("unsafe evidence directory: " + str(exc))
     try:
         manifest_data = read_regular_at(root_fd, "manifest.json", 65536)
         try:
