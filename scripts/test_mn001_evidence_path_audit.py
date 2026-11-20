@@ -113,6 +113,20 @@ class AuditTests(unittest.TestCase):
             self.assertEqual(module.check_path('/'),
                              (False, 'METADATA_INSPECTION_FAILED'))
 
+    def test_bad_pathlike_conversion_blocks_before_open(self):
+        class BadPath:
+            def __fspath__(self):
+                raise TypeError("malformed PathLike")
+
+        with patch.object(module.os, 'open', side_effect=AssertionError('opened')):
+            self.assertEqual(module.check_path(BadPath()),
+                             (False, 'INVALID_PATH'))
+
+    def test_triple_slash_root_rejected_before_open(self):
+        with patch.object(module.os, 'open', side_effect=AssertionError('opened')):
+            self.assertEqual(module.check_path('///evidence'),
+                             (False, 'INVALID_PATH'))
+
     def test_empty_path_rejected(self):
         self.assertEqual(module.check_path(''), (False, 'EMPTY_PATH'))
 
