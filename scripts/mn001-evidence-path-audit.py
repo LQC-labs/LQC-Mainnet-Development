@@ -22,6 +22,8 @@ def check_path(path, expected_uid=None):
     requested = Path(path)
     if not str(path):
         return False, 'EMPTY_PATH'
+    if '\x00' in str(path):
+        return False, 'INVALID_PATH'
     # Relative input trusts CWD without validating its ancestor chain.
     # Require absolute paths to inspect every component from the root.
     if not requested.is_absolute():
