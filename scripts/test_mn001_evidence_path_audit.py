@@ -40,12 +40,16 @@ class AuditTests(unittest.TestCase):
             middle.mkdir(mode=0o700)
             target = middle / 'bundle'
             target.mkdir(mode=0o700)
+            self.assertEqual(module.check_path(target),
+                             (True, 'DIRECTORY_METADATA_CONSISTENT'))
             middle.chmod(0o770)
             try:
                 self.assertEqual(module.check_path(target),
                                  (False, 'UNTRUSTED_DIRECTORY_METADATA'))
             finally:
                 middle.chmod(0o700)
+            self.assertEqual(module.check_path(target),
+                             (True, 'DIRECTORY_METADATA_CONSISTENT'))
 
     def test_private_user_directory_acceptable(self):
         self.assertTrue(module.acceptable_directory(self.info(stat.S_IFDIR | 0o700), 1001))
