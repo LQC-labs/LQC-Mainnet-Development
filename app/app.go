@@ -27,7 +27,11 @@ const (
 	ReferenceCommit = "c3ae9067a7eadcdea55a5192226916deb44c71c4"
 )
 
-var configureOnce sync.Once
+var (
+	configureOnce sync.Once
+	configureMu   sync.Mutex
+	configured    *chainconfig.ChainConfig
+)
 
 type options map[string]interface{}
 
@@ -37,7 +41,7 @@ func (o options) Get(key string) interface{} { return o[key] }
 // v0.7.3 reference constructor. It has no Genesis or start CLI in this stage.
 type App struct {
 	SDK     *evmd.EVMD
-	Profile chainconfig.DevnetConfig
+	Profile chainconfig.RuntimeConfig
 }
 
 // New constructs and loads an empty application database, without InitChain,
@@ -50,10 +54,28 @@ func New(logger log.Logger, db dbm.DB, home string) (result *App, err error) {
 // newWithOptions retains the original New defaults. Only the persistent
 // constructor supplies its bounded proposal-wait option.
 func newWithOptions(logger log.Logger, db dbm.DB, home string, extra options, beforeLoad func(*evmd.EVMD, options) error) (result *App, err error) {
-	profile := chainconfig.TestOnlyDevnetConfig()
-	if err := profile.Validate(); err != nil {
+	devnet := chainconfig.TestOnlyDevnetConfig()
+	if err := devnet.Validate(); err != nil {
 		return nil, err
 	}
+	profile := chainconfig.RuntimeConfig{Chain: devnet.Chain, MinimumGasPrice: devnet.MinimumGasPrice}
+	return newWithRuntimeOptions(logger, db, home, profile, extra, beforeLoad)
+}
+
+// NewMainnetDraft constructs an uninitialized application for offline Genesis
+// tools. It uses a memory database and has no production gas price or node home.
+func NewMainnetDraft(logger log.Logger, db dbm.DB, home string) (*App, error) {
+	if _, ok := db.(*dbm.MemDB); !ok {
+		return nil, fmt.Errorf("Mainnet draft requires a memory database")
+	}
+	mainnet := chainconfig.MainnetChainConfig()
+	if err := chainconfig.ValidateNetworkPair(chainconfig.TestOnlyDevnetConfig().Chain, mainnet); err != nil {
+		return nil, err
+	}
+	return newWithRuntimeOptions(logger, db, home, chainconfig.RuntimeConfig{Chain: mainnet}, nil, nil)
+}
+
+func newWithRuntimeOptions(logger log.Logger, db dbm.DB, home string, profile chainconfig.RuntimeConfig, extra options, beforeLoad func(*evmd.EVMD, options) error) (result *App, err error) {
 	if logger == nil || db == nil || home == "" {
 		return nil, fmt.Errorf("logger, database and isolated home are required")
 	}
@@ -63,6 +85,12 @@ func newWithOptions(logger log.Logger, db dbm.DB, home string, extra options, be
 			err = fmt.Errorf("LQC application initialization failed: %v", failure)
 		}
 	}()
+	// The SDK address configuration and EVM chain configuration are global.
+	configureMu.Lock()
+	defer configureMu.Unlock()
+	if configured != nil && *configured != profile.Chain {
+		return nil, fmt.Errorf("process already configured for a different network; use a fresh process")
+	}
 	configureOnce.Do(func() {
 		cfg := sdk.GetConfig()
 		prefix := profile.Chain.Bech32Prefix
@@ -71,7 +99,12 @@ func newWithOptions(logger log.Logger, db dbm.DB, home string, extra options, be
 		cfg.SetBech32PrefixForConsensusNode(prefix+sdk.PrefixValidator+sdk.PrefixConsensus, prefix+sdk.PrefixValidator+sdk.PrefixConsensus+sdk.PrefixPublic)
 		cfg.SetCoinType(hd.Bip44CoinType)
 		cfg.Seal()
+		chain := profile.Chain
+		configured = &chain
 	})
+	if configured == nil {
+		return nil, fmt.Errorf("SDK configuration unavailable; use a fresh process")
+	}
 	opts := options{
 		flags.FlagHome:             home,
 		evmflags.EVMChainID:        profile.Chain.EVMChainID,

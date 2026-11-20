@@ -64,7 +64,7 @@ func (n *Node) StartEVMRPCWithOptions(ctx context.Context, address string, opts 
 	if n.node == nil || !n.node.IsRunning() {
 		return "", fmt.Errorf("running node required")
 	}
-	if err := n.application.Profile.Validate(); err != nil {
+	if _, err := n.application.Profile.AsTestDevnet(); err != nil {
 		return "", err
 	}
 	chainID := n.application.Profile.Chain.EVMChainID

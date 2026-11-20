@@ -30,14 +30,37 @@ test("rejects an unset LQC Chain ID", () => {
   }
 });
 
-test("rejects BSC Chain IDs for either LQC network", async (t) => {
+test("rejects reserved EVM Chain IDs for either LQC network", async (t) => {
   for (const network of ["lqcDevnet", "lqcMainnet"]) {
-    for (const chainId of [56, 97]) {
+    for (const chainId of [56, 97, 9001]) {
       await t.test(`${network} rejects ${chainId}`, () => {
         assert.throws(() => getQuoteChainId(network, { [network]: { chainId } }), /Chain ID conflict/);
       });
     }
   }
+});
+
+test("rejects the Devnet EVM Chain ID in Mainnet regardless of the Devnet entry", async (t) => {
+  for (const [name, devnet] of [
+    ["missing Devnet", {}],
+    ["null Devnet", { lqcDevnet: null }],
+    ["empty Devnet", { lqcDevnet: {} }],
+    ["unset Devnet Chain ID", { lqcDevnet: { chainId: null } }],
+    ["configured Devnet", { lqcDevnet: { chainId: 917001 } }],
+  ]) {
+    await t.test(name, () => {
+      assert.throws(
+        () => getQuoteChainId("lqcMainnet", { ...devnet, lqcMainnet: { chainId: 917001 } }),
+        /Devnet Chain ID cannot be used by LQC Mainnet/,
+      );
+    });
+  }
+});
+
+test("accepts the Devnet EVM Chain ID for Devnet with Mainnet unset", () => {
+  const networks = { lqcDevnet: { chainId: 917001 }, lqcMainnet: { chainId: null } };
+  assert.equal(getQuoteChainId("lqcDevnet", networks), 917001);
+  assert.throws(() => getQuoteChainId("lqcMainnet", networks), /Chain ID not configured/);
 });
 
 test("rejects identical Devnet and Mainnet Chain IDs", () => {
@@ -46,13 +69,21 @@ test("rejects identical Devnet and Mainnet Chain IDs", () => {
   assert.throws(() => getQuoteChainId("lqcMainnet", networks), /LQC networks conflict/);
 });
 
-test("accepts distinct valid temporary LQC Chain IDs", () => {
+test("keeps Devnet usable alongside a distinct Mainnet ID", () => {
   const temporaryNetworks = {
     lqcDevnet: { chainId: 12345 },
     lqcMainnet: { chainId: 54321 },
   };
   assert.equal(getQuoteChainId("lqcDevnet", temporaryNetworks), 12345);
-  assert.equal(getQuoteChainId("lqcMainnet", temporaryNetworks), 54321);
+  assert.throws(() => getQuoteChainId("lqcMainnet", temporaryNetworks), /Mainnet RPC is not enabled/);
+});
+
+test("blocks Mainnet quotes with approved identity while RPC deployment is disabled", () => {
+  assert.equal(networksExample.lqcMainnet.chainId, 768167);
+  assert.deepEqual(networksExample.lqcMainnet.rpcUrls, []);
+  assert.throws(() => getQuoteChainId("lqcMainnet", networksExample), /Mainnet RPC is not enabled/);
+  const injected = { ...networksExample, lqcMainnet: { ...networksExample.lqcMainnet, rpcUrls: ["http://192.0.2.10:8545"] } };
+  assert.throws(() => getQuoteChainId("lqcMainnet", injected), /Mainnet RPC is not enabled/);
 });
 
 test("rejects an unknown network name", () => {

@@ -1,7 +1,7 @@
 // Copyright 2026 MMXlabs & LQC LLC
 // SPDX-License-Identifier: Apache-2.0
 
-// Package genesis creates and validates an unfunded, validator-free Devnet draft.
+// Package genesis creates and validates unfunded, validator-free drafts.
 // It never calls InitChain or creates signing keys.
 package genesis
 
@@ -36,6 +36,22 @@ type Document struct {
 // New uses registered module defaults, deliberately excluding evmd's example
 // token pairs, funded accounts and preinstalls. Native test units use 18 decimals.
 func New(a *app.App) ([]byte, error) {
+	profile, err := a.Profile.AsTestDevnet()
+	if err != nil {
+		return nil, err
+	}
+	draft, err := newDraft(a, nativeMetadata())
+	if err != nil {
+		return nil, err
+	}
+	data, err := marshalDraft(Document{AppGenesis: *draft, Profile: profile})
+	if err != nil {
+		return nil, err
+	}
+	return data, Validate(a, data)
+}
+
+func newDraft(a *app.App, metadata banktypes.Metadata) (*genutiltypes.AppGenesis, error) {
 	state := a.SDK.BasicModuleManager.DefaultGenesis(a.SDK.AppCodec())
 	// The SDK defaults use stake in staking, mint and governance. Replace only
 	// exact default denomination strings in newly generated module defaults.
@@ -63,7 +79,7 @@ func New(a *app.App) ([]byte, error) {
 	if err := a.SDK.AppCodec().UnmarshalJSON(state[banktypes.ModuleName], &bank); err != nil {
 		return nil, err
 	}
-	bank.DenomMetadata = []banktypes.Metadata{nativeMetadata()}
+	bank.DenomMetadata = []banktypes.Metadata{metadata}
 	state[banktypes.ModuleName] = a.SDK.AppCodec().MustMarshalJSON(&bank)
 	raw, err := json.Marshal(state)
 	if err != nil {
@@ -75,12 +91,15 @@ func New(a *app.App) ([]byte, error) {
 	if err := g.ValidateAndComplete(); err != nil {
 		return nil, err
 	}
-	data, err := json.MarshalIndent(Document{AppGenesis: *g, Profile: a.Profile}, "", "  ")
+	return g, nil
+}
+
+func marshalDraft(document interface{}) ([]byte, error) {
+	data, err := json.MarshalIndent(document, "", "  ")
 	if err != nil {
 		return nil, err
 	}
-	data = append(data, '\n')
-	return data, Validate(a, data)
+	return append(data, '\n'), nil
 }
 
 func replaceDenom(v interface{}, old, denom string) interface{} {
@@ -103,25 +122,39 @@ func replaceDenom(v interface{}, old, denom string) interface{} {
 
 // Validate is read-only: completion operates on a decoded copy, never the file.
 // This stage accepts only unfunded drafts; allocation/validator tooling is absent.
-func Validate(a *app.App, data []byte) (err error) {
-	defer func() {
-		if p := recover(); p != nil {
-			err = fmt.Errorf("invalid genesis: %v", p)
-		}
-	}()
+func Validate(a *app.App, data []byte) error {
 	var doc Document
+	if err := decodeDraft(data, &doc); err != nil {
+		return err
+	}
+	if err := doc.Profile.Validate(); err != nil {
+		return err
+	}
+	if a.Profile.MinimumGasPrice != doc.Profile.MinimumGasPrice {
+		return fmt.Errorf("runtime profile mismatch")
+	}
+	return validateDraft(a, &doc.AppGenesis, doc.Profile.Chain, nativeMetadata())
+}
+
+func decodeDraft(data []byte, doc interface{}) error {
 	dec := json.NewDecoder(bytes.NewReader(data))
 	dec.DisallowUnknownFields()
-	if err := dec.Decode(&doc); err != nil {
+	if err := dec.Decode(doc); err != nil {
 		return err
 	}
 	if err := dec.Decode(new(interface{})); err != io.EOF {
 		return fmt.Errorf("unexpected trailing genesis data")
 	}
-	if err := doc.Profile.Validate(); err != nil {
-		return err
-	}
-	if doc.ChainID != doc.Profile.Chain.CosmosChainID || doc.AppName != app.Name || doc.AppVersion != app.Version {
+	return nil
+}
+
+func validateDraft(a *app.App, doc *genutiltypes.AppGenesis, chain chainconfig.ChainConfig, expectedMetadata banktypes.Metadata) (err error) {
+	defer func() {
+		if p := recover(); p != nil {
+			err = fmt.Errorf("invalid genesis: %v", p)
+		}
+	}()
+	if doc.ChainID != chain.CosmosChainID || doc.AppName != app.Name || doc.AppVersion != app.Version {
 		return fmt.Errorf("genesis application identity or chain ID mismatch")
 	}
 	if doc.Consensus == nil || len(doc.Consensus.Validators) != 0 || len(doc.AppHash) != 0 || doc.InitialHeight != 1 || doc.GenesisTime.IsZero() {
@@ -130,7 +163,13 @@ func Validate(a *app.App, data []byte) (err error) {
 	if err := doc.ValidateAndComplete(); err != nil {
 		return err
 	}
-	if sdk.GetConfig().GetBech32AccountAddrPrefix() != doc.Profile.Chain.Bech32Prefix || evmtypes.GetEthChainConfig() == nil || evmtypes.GetEthChainConfig().ChainID.Uint64() != doc.Profile.Chain.EVMChainID {
+	sdkConfig := sdk.GetConfig()
+	evmConfig := evmtypes.GetEthChainConfig()
+	if a.Profile.Chain != chain || a.SDK.ChainID() != chain.CosmosChainID ||
+		sdkConfig.GetBech32AccountAddrPrefix() != chain.Bech32Prefix ||
+		sdkConfig.GetBech32ValidatorAddrPrefix() != chain.Bech32Prefix+sdk.PrefixValidator+sdk.PrefixOperator ||
+		sdkConfig.GetBech32ConsensusAddrPrefix() != chain.Bech32Prefix+sdk.PrefixValidator+sdk.PrefixConsensus ||
+		evmConfig == nil || evmConfig.ChainID == nil || !evmConfig.ChainID.IsUint64() || evmConfig.ChainID.Uint64() != chain.EVMChainID {
 		return fmt.Errorf("runtime profile mismatch")
 	}
 	var state map[string]json.RawMessage
@@ -158,7 +197,7 @@ func Validate(a *app.App, data []byte) (err error) {
 	if err := a.SDK.AppCodec().UnmarshalJSON(state[evmtypes.ModuleName], &evm); err != nil {
 		return err
 	}
-	denom := doc.Profile.Chain.NativeDenom
+	denom := chain.NativeDenom
 	if evm.Params.EvmDenom != denom || evm.Params.ExtendedDenomOptions == nil || evm.Params.ExtendedDenomOptions.ExtendedDenom != denom || len(evm.Accounts) != 0 || len(evm.Preinstalls) != 0 {
 		return fmt.Errorf("invalid EVM denomination or nonempty EVM allocations")
 	}
@@ -170,19 +209,18 @@ func Validate(a *app.App, data []byte) (err error) {
 		return fmt.Errorf("funding is outside this unfunded draft")
 	}
 	if len(bank.DenomMetadata) != 1 {
-		return fmt.Errorf("exactly one native test token metadata entry is required")
+		return fmt.Errorf("exactly one native token metadata entry is required")
 	}
 	metadata := bank.DenomMetadata[0]
-	expectedMetadata := nativeMetadata()
 	if err := metadata.Validate(); err != nil {
 		return err
 	}
 	if metadata.Base != denom || metadata.Display != expectedMetadata.Display || metadata.Name != expectedMetadata.Name || metadata.Symbol != expectedMetadata.Symbol || len(metadata.DenomUnits) != 2 {
-		return fmt.Errorf("native token metadata does not match the fixed test profile")
+		return fmt.Errorf("native token metadata does not match the draft profile")
 	}
 	for i, unit := range metadata.DenomUnits {
 		if unit == nil || unit.Denom != expectedMetadata.DenomUnits[i].Denom || unit.Exponent != expectedMetadata.DenomUnits[i].Exponent || len(unit.Aliases) != 0 {
-			return fmt.Errorf("native test token requires atest exponent 0 and test exponent 18")
+			return fmt.Errorf("native token denomination units do not match the draft profile")
 		}
 	}
 	var auth authtypes.GenesisState

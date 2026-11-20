@@ -24,14 +24,22 @@ test("shipped Devnet bundle is unconfigured and never enables transactions", asy
   assert.equal(profile.mainnetChainId, null);
 });
 
-test("original BSC examples and unadopted Mainnet remain unchanged", async () => {
+test("Devnet projection preserves BSC and the approved Mainnet identity with RPC disabled", async () => {
   const original = JSON.parse(await readFile(new URL("../config/networks.example.json", import.meta.url), "utf8"));
-  assert.deepEqual(original, { bscMainnet: { chainId: 56 }, bscTestnet: { chainId: 97 }, lqcDevnet: { chainId: null }, lqcMainnet: { chainId: null } });
+  assert.deepEqual(original, { bscMainnet: { chainId: 56 }, bscTestnet: { chainId: 97 }, lqcDevnet: { chainId: null }, lqcMainnet: {
+    chainId: 768167, cosmosChainId: "lqc-1", nativeDenom: "alqc", displayDenom: "LQC", decimals: 18,
+    bech32Prefix: "lqc", rpcUrls: [],
+  } });
   assert.deepEqual(profile.preservedNetworks, { bscMainnet: 56, bscTestnet: 97 });
   const before=JSON.stringify(original),networks=quoteNetworksForDevnet(profile,original);
   assert.equal(getQuoteChainId("lqcDevnet",networks),917001);
   assert.equal(getQuoteChainId("bscMainnet",networks),56);assert.equal(getQuoteChainId("bscTestnet",networks),97);
-  assert.equal(networks.lqcMainnet.chainId,null);assert.equal(JSON.stringify(original),before);
+  assert.deepEqual(networks.lqcMainnet, original.lqcMainnet);
+  assert.throws(() => getQuoteChainId("lqcMainnet", networks), /Mainnet RPC is not enabled/);
+  assert.equal(JSON.stringify(original), before);
+  assert.throws(() => quoteNetworksForDevnet(profile, {
+    ...original, lqcMainnet: { ...original.lqcMainnet, rpcUrls: ["http://192.0.2.10:8545"] },
+  }), /Mainnet RPC must remain unset/);
   assert.throws(()=>quoteNetworksForDevnet(profile,{...original,lqcDevnet:{chainId:97}}));
 });
 

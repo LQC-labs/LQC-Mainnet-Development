@@ -21,7 +21,12 @@ Core 3/2 changes. Flow interface source:
 | Wallet native currency | LQC Devnet Test / TEST / 18 decimals |
 | Local RPC | http://127.0.0.1:8545 |
 | Explicit browser Origin | http://localhost:3000 |
-| Mainnet EVM Chain ID | null / undecided |
+| Mainnet EVM Chain ID in this Devnet wallet profile | null |
+
+The separate example network registry records the approved Mainnet development
+identity, including EVM chain ID 768167. Its Mainnet RPC list is empty, and the
+quote adapter keeps Mainnet disabled. The Devnet wallet profile remains scoped
+to the local test network.
 
 The RPC URL is an intended local endpoint, not evidence that a node is listening
 on 8545. Existing Core tests use ephemeral ports. Any endpoint change must pass
@@ -67,7 +72,8 @@ Mock tests of this verifier are not actual LQC deployments.
 Load the three JSON files explicitly and call `validateBundle`. No global
 `window.LQC_FLOW_CONFIG` or existing BSC service is changed.
 `quoteNetworksForDevnet(profile, existingNetworks)` creates a separate map for
-the existing `getQuoteChainId` adapter while preserving BSC and null Mainnet.
+the existing `getQuoteChainId` adapter while preserving BSC and keeping Mainnet
+RPC disabled.
 `walletRequests(profile)` prepares add/switch payloads only; it does not invoke
 the wallet, request accounts/signatures or send transactions.
 

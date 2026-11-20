@@ -22,12 +22,10 @@ func TestCLIScope(t *testing.T) {
 			t.Fatal("missing application identity")
 		}
 	}
-	for _, command := range []string{"start", "keys"} {
-		root := newRootCommand()
-		root.SetArgs([]string{command})
-		if err := root.Execute(); err == nil {
-			t.Errorf("out-of-scope command %s must not be available", command)
-		}
+	root := newRootCommand()
+	root.SetArgs([]string{"keys"})
+	if err := root.Execute(); err == nil {
+		t.Error("out-of-scope keys command must not be available")
 	}
 	for _, args := range [][]string{{"init"}, {"init", "--home", t.TempDir(), "--chain-id", "wrong"}, {"genesis", "validate"}} {
 		root := newRootCommand()

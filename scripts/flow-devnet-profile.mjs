@@ -130,11 +130,15 @@ export function walletRequests(p) {
   };
 }
 
-// Explicit opt-in bridge to the existing Core quote adapter. The original
-// networks object/example remains untouched; no Mainnet identifier is adopted.
+// Explicit opt-in bridge to the Core quote adapter. Only the Devnet entry is
+// activated. Mainnet may carry its approved identity with RPC still unset.
 export function quoteNetworksForDevnet(p, existing) {
   validateProfile(p);
-  requireValue(existing?.bscMainnet?.chainId === 56 && existing.bscTestnet?.chainId === 97 && existing.lqcMainnet?.chainId === null, "original BSC/unadopted Mainnet settings required");
+  requireValue(existing?.bscMainnet?.chainId === 56 && existing.bscTestnet?.chainId === 97, "original BSC settings required");
+  const mainnet = existing.lqcMainnet;
+  requireValue(mainnet?.chainId === null || mainnet?.chainId === 768167, "unexpected Mainnet identity");
+  requireValue((mainnet.chainId === null && mainnet.rpcUrls === undefined) ||
+    (Array.isArray(mainnet.rpcUrls) && mainnet.rpcUrls.length === 0), "Mainnet RPC must remain unset");
   requireValue(existing.lqcDevnet?.chainId === null || existing.lqcDevnet?.chainId === 917001, "conflicting Devnet configuration");
   return { ...existing, bscMainnet: { ...existing.bscMainnet }, bscTestnet: { ...existing.bscTestnet }, lqcMainnet: { ...existing.lqcMainnet }, lqcDevnet: { ...existing.lqcDevnet, chainId: p.chainId } };
 }

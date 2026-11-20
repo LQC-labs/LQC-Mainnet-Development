@@ -2,5 +2,13 @@
   "bscMainnet": {"chainId": 56},
   "bscTestnet": {"chainId": 97},
   "lqcDevnet": {"chainId": null},
-  "lqcMainnet": {"chainId": null}
+  "lqcMainnet": {
+    "chainId": 768167,
+    "cosmosChainId": "lqc-1",
+    "nativeDenom": "alqc",
+    "displayDenom": "LQC",
+    "decimals": 18,
+    "bech32Prefix": "lqc",
+    "rpcUrls": []
+  }
 }

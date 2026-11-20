@@ -19,7 +19,7 @@ func newRootCommand() *cobra.Command {
 	root := &cobra.Command{
 		Use:           "lqcd",
 		Short:         "LQC test Devnet application and Genesis CLI",
-		Long:          "LQC test Devnet CLI. Creates unfunded Genesis drafts without validator keys or node startup.",
+		Long:          "LQC CLI for test Devnet Genesis tools and isolated single-validator development.",
 		SilenceUsage:  true,
 		SilenceErrors: true,
 		Args:          cobra.NoArgs,
@@ -62,7 +62,7 @@ func newRootCommand() *cobra.Command {
 	}
 	initCmd.Flags().String("home", "", "Explicit isolated test home")
 	initCmd.Flags().String("chain-id", "lqc-devnet-test-1", "Fixed test Cosmos chain ID")
-	genesisCmd := &cobra.Command{Use: "genesis", Short: "Test Devnet Genesis tools"}
+	genesisCmd := &cobra.Command{Use: "genesis", Short: "Devnet Genesis and offline Mainnet draft tools"}
 	genesisCmd.AddCommand(&cobra.Command{
 		Use: "validate <file>", Short: "Validate an unfunded Genesis draft without modifying it", Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -79,17 +79,24 @@ func newRootCommand() *cobra.Command {
 			})
 		},
 	})
+	genesisCmd.AddCommand(mainnetDraftCommand())
 	root.AddCommand(initCmd, genesisCmd, singleValidatorCommand())
+	addDevnetCommands(root)
 	return root
 }
 
-func withGenesisApp(run func(*app.App) error) (err error) {
+func withGenesisApp(run func(*app.App) error) error {
+	return withOfflineGenesisApp(app.New, run)
+}
+
+func withOfflineGenesisApp(open func(log.Logger, dbm.DB, string) (*app.App, error), run func(*app.App) error) (err error) {
 	home, err := os.MkdirTemp("", "lqc-genesis-app-")
 	if err != nil {
 		return err
 	}
+	defer os.RemoveAll(home)
 	db := dbm.NewMemDB()
-	a, err := app.New(log.NewNopLogger(), db, home)
+	a, err := open(log.NewNopLogger(), db, home)
 	if err != nil {
 		_ = db.Close()
 		return err
