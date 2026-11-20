@@ -44,6 +44,8 @@ def read_regular_at(root_fd, name, maximum):
     """Read a regular file via dirfd, retaining FD ownership until cleanup."""
     flags = os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK | os.O_CLOEXEC
     fd = os.open(name, flags, dir_fd=root_fd)
+    processing_error = None
+    payload = None
     try:
         info = os.fstat(fd)
         if not stat.S_ISREG(info.st_mode):
@@ -55,10 +57,22 @@ def read_regular_at(root_fd, name, maximum):
             payload = stream.read(maximum + 1)
         if not payload or len(payload) > maximum:
             raise ValueError("evidence read exceeds size limit: " + name)
-        return payload
-    finally:
-        # A Linux close error is fatal, and never retried on the same FD.
-        os.close(fd)
+    except (OSError, ValueError) as exc:
+        processing_error = exc
+    close_error = None
+    try:
+        os.close(fd)  # Never retry a failed Linux close.
+    except OSError as exc:
+        close_error = exc
+    if close_error is not None:
+        if processing_error is not None:
+            raise OSError("evidence file processing failed: " +
+                          str(processing_error) + "; close failed: " +
+                          str(close_error)) from processing_error
+        raise OSError("evidence file close failed: " + str(close_error)) from close_error
+    if processing_error is not None:
+        raise processing_error
+    return payload
 
 
 def open_evidence_directory(directory):
@@ -87,11 +101,13 @@ def open_evidence_directory(directory):
                 # Linux close may already have released parent_fd; never retry.
                 raise OSError("failed to close parent evidence directory") from exc
         return fd
-    except BaseException:
+    except BaseException as original_error:
         try:
             os.close(fd)  # Close the currently owned child exactly once.
-        except OSError as exc:
-            raise OSError("failed to clean up evidence directory") from exc
+        except OSError as cleanup_error:
+            raise OSError("evidence traversal failed: " +
+                          str(original_error) + "; cleanup failed: " +
+                          str(cleanup_error)) from original_error
         raise
 
 
