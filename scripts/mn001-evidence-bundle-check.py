@@ -40,7 +40,12 @@ def unique_object_pairs(pairs):
 
 
 def check(directory):
-    root = Path(directory).resolve(strict=True)
+    # Reject a symlink at the entry boundary, not just within the bundle.
+    # resolve() would silently follow an attacker-chosen evidence root.
+    requested = Path(directory)
+    if requested.is_symlink():
+        return blocked("evidence directory must not be a symlink")
+    root = requested.resolve(strict=True)
     if not root.is_dir():
         return blocked("evidence path must be a directory")
     manifest = root / "manifest.json"

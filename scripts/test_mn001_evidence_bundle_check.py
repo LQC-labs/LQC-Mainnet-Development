@@ -79,6 +79,12 @@ class EvidenceCheckerTests(unittest.TestCase):
         (self.root / "manifest.json").write_text(raw, encoding="utf-8")
         self.assertEqual(module.check(self.root), 1)
 
+    def test_symlink_root_directory_blocks(self):
+        link = self.root.parent / (self.root.name + "-symlink")
+        link.symlink_to(self.root, target_is_directory=True)
+        self.addCleanup(link.unlink)
+        self.assertEqual(module.check(link), 1)
+
     def test_symlink_evidence_blocks(self):
         target = self.root / "network_denial.txt"
         target.unlink()
