@@ -3,6 +3,8 @@
 # SPDX-License-Identifier: Apache-2.0
 """Offline format-verifier unit tests only. No VM or MN-001 candidate execution."""
 import hashlib
+from contextlib import redirect_stderr, redirect_stdout
+import io
 import importlib.util
 import json
 import os
@@ -83,6 +85,81 @@ class EvidenceCheckerTests(unittest.TestCase):
         # Verify every successfully opened descriptor was closed once.
         self.assertGreaterEqual(len(opened), 1)
         self.assertEqual(closed, opened)
+
+    def test_wrapper_creation_failure_closes_raw_file_fd(self):
+        real_open = os.open
+        opened = []
+        with os.scandir(self.root):
+            pass  # Only synthetic local temporary files are used.
+        dir_fd = real_open(str(self.root), os.O_RDONLY | os.O_DIRECTORY)
+        try:
+            def track_open(name, flags, *args, **kwargs):
+                fd = real_open(name, flags, *args, **kwargs)
+                opened.append(fd)
+                return fd
+            with patch.object(module.os, "open", side_effect=track_open):
+                with patch.object(module.os, "fdopen", side_effect=OSError("injected wrapper failure")):
+                    with self.assertRaises(OSError):
+                        module.read_regular_at(dir_fd, "manifest.json", 65536)
+            self.assertEqual(len(opened), 1)
+            with self.assertRaises(OSError):
+                os.fstat(opened[0])  # The raw file descriptor was closed.
+        finally:
+            os.close(dir_fd)
+
+    def test_directory_input_closes_raw_fd(self):
+        real_open = os.open
+        opened = []
+        dir_fd = real_open(str(self.root), os.O_RDONLY | os.O_DIRECTORY)
+        try:
+            def track_open(name, flags, *args, **kwargs):
+                fd = real_open(name, flags, *args, **kwargs)
+                opened.append(fd)
+                return fd
+            with patch.object(module.os, "open", side_effect=track_open):
+                with self.assertRaises(ValueError):
+                    module.read_regular_at(dir_fd, "network_denial.txt", 65536)
+        finally:
+            os.close(dir_fd)
+        # The ordinary directory case is exercised separately by the
+        # existing test_directory_in_place_of_evidence_blocks test.
+
+    def test_root_close_failure_never_prints_valid(self):
+        root_fd = os.open(str(self.root), os.O_RDONLY | os.O_DIRECTORY)
+        real_close = os.close
+        out, err = io.StringIO(), io.StringIO()
+        def final_close_error(fd):
+            real_close(fd)
+            if fd == root_fd:
+                raise OSError("injected root cleanup failure")
+        with patch.object(module, "open_evidence_directory", return_value=root_fd):
+            with patch.object(module.os, "close", side_effect=final_close_error):
+                with redirect_stdout(out), redirect_stderr(err):
+                    result = module.check(self.root)
+        self.assertEqual(result, 1)
+        self.assertEqual(out.getvalue().count("EVIDENCE_FORMAT=BLOCKED"), 1)
+        self.assertNotIn("EVIDENCE_FORMAT=VALID", out.getvalue())
+        self.assertIn("root cleanup failure", err.getvalue())
+
+    def test_validation_and_root_cleanup_errors_both_reported(self):
+        self.payload["schema_version"] = 2
+        self.save_manifest()
+        root_fd = os.open(str(self.root), os.O_RDONLY | os.O_DIRECTORY)
+        real_close = os.close
+        out, err = io.StringIO(), io.StringIO()
+        def final_close_error(fd):
+            real_close(fd)
+            if fd == root_fd:
+                raise OSError("injected cleanup failure")
+        with patch.object(module, "open_evidence_directory", return_value=root_fd):
+            with patch.object(module.os, "close", side_effect=final_close_error):
+                with redirect_stdout(out), redirect_stderr(err):
+                    result = module.check(self.root)
+        self.assertEqual(result, 1)
+        self.assertEqual(out.getvalue().count("EVIDENCE_FORMAT=BLOCKED"), 1)
+        self.assertNotIn("EVIDENCE_FORMAT=VALID", out.getvalue())
+        self.assertIn("unsupported evidence schema", err.getvalue())
+        self.assertIn("injected cleanup failure", err.getvalue())
 
     def test_synthetic_format_is_valid_but_never_authorized(self):
         self.assertEqual(module.check(self.root), 0)
