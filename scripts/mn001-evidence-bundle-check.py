@@ -52,7 +52,8 @@ def check(directory):
         payload = json.loads(manifest.read_text(encoding="utf-8"), object_pairs_hook=unique_object_pairs)
     except (ValueError, UnicodeError, OSError):
         return blocked("invalid JSON manifest")
-    if not isinstance(payload, dict) or payload.get("schema_version") != 1:
+    if (not isinstance(payload, dict) or type(payload.get("schema_version")) is not int
+            or payload["schema_version"] != 1):
         return blocked("unsupported evidence schema")
     if (not isinstance(payload.get("source_sha"), str)
             or not GIT_SHA.fullmatch(payload["source_sha"])

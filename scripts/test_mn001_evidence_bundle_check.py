@@ -43,6 +43,16 @@ class EvidenceCheckerTests(unittest.TestCase):
     def test_synthetic_format_is_valid_but_never_authorized(self):
         self.assertEqual(module.check(self.root), 0)
 
+    def test_boolean_schema_version_blocks(self):
+        self.payload["schema_version"] = True
+        self.save_manifest()
+        self.assertEqual(module.check(self.root), 1)
+
+    def test_unknown_schema_version_blocks(self):
+        self.payload["schema_version"] = 2
+        self.save_manifest()
+        self.assertEqual(module.check(self.root), 1)
+
     def test_missing_required_category_blocks(self):
         del self.payload["evidence"]["network_denial"]
         self.save_manifest()
