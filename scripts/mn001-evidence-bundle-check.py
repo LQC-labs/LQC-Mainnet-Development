@@ -27,7 +27,7 @@ GIT_SHA = re.compile(r"^[0-9a-f]{40}$")
 # NO_GO is first and VALID is last to fail closed on truncated output.
 SUCCESS_RECORD = (
     "MN001_GATE=NO_GO REVIEW_REQUIRED=YES EVIDENCE_CATEGORIES=8 "
-    "EVIDENCE_FORMAT=VALID\\n"
+    "EVIDENCE_FORMAT=VALID\n"
 )
 
 
