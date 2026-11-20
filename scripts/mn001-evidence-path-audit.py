@@ -34,7 +34,10 @@ def check_path(path, expected_uid=None):
         expected_uid = os.getuid()
     if not isinstance(path, (str, os.PathLike)):
         return False, 'INVALID_PATH'
-    raw_path = os.fspath(path)
+    try:
+        raw_path = os.fspath(path)
+    except (TypeError, ValueError, OSError):
+        return False, 'INVALID_PATH'
     if not isinstance(raw_path, str):
         return False, 'INVALID_PATH'
     if not raw_path:
