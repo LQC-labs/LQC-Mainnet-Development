@@ -710,8 +710,16 @@ class EvidenceCheckerTests(unittest.TestCase):
             "  sys.__stdout__.write(value); sys.__stdout__.flush()\\n"
             "  return len(value)\\n"
             " def flush(self): raise OSError('injected child flush failure')\\n"
+            "original=sys.stdout\\n"
             "sys.stdout=FailingFlush()\\n"
-            "sys.exit(mod.cli([sys.argv[2]]))\\n"
+            "try:\\n"
+            " try:\\n"
+            "  mod.cli([sys.argv[2]])\\n"
+            " except OSError as exc:\\n"
+            "  sys.stderr.write('CLI_FLUSH_OBSERVED: '+str(exc)+'\\\\n')\\n"
+            "  raise\\n"
+            "finally:\\n"
+            " sys.stdout=original\\n"
         )
         # Python code uses actual LF separators, not literal backslash+n.
         source = source.replace("\\n", "\n")
@@ -724,6 +732,7 @@ class EvidenceCheckerTests(unittest.TestCase):
         self.assertEqual(completed.stdout, expected)
         self.assertNotEqual(completed.returncode, 0)
         self.assertIn(b"injected child flush failure", completed.stderr)
+        self.assertEqual(completed.stderr.count(b"CLI_FLUSH_OBSERVED:"), 1)
         self.assertEqual(completed.stdout.count(b"EVIDENCE_FORMAT=VALID"), 1)
         self.assertFalse(module.is_complete_format_success(
             completed.stdout.decode("ascii"), completed.returncode))
@@ -749,13 +758,16 @@ class EvidenceCheckerTests(unittest.TestCase):
         self.assertIn(("manifest.json", errno.ELOOP), observed)
 
     def test_valid_middle_directory_symlink_rejected_with_errno(self):
+        # A real directory component follows the symlink; this is not a
+        # final-component symlink test.
         real_dir = self.root / "real-dir"
-        real_dir.mkdir()
+        bundle = real_dir / "bundle"
+        bundle.mkdir(parents=True)
         import shutil
         for entry in self.root.iterdir():
             if entry.is_file():
-                shutil.copyfile(entry, real_dir / entry.name)
-        self.assertEqual(module.evaluate(real_dir), (True, None))
+                shutil.copyfile(entry, bundle / entry.name)
+        self.assertEqual(module.evaluate(bundle), (True, None))
         alias = self.root / "middle-alias"
         alias.symlink_to(real_dir, target_is_directory=True)
         real_open = os.open
@@ -767,11 +779,12 @@ class EvidenceCheckerTests(unittest.TestCase):
                 observed.append((name, exc.errno))
                 raise
         with patch.object(module.os, "open", side_effect=recording_open):
-            valid, reason = module.evaluate(alias)
+            valid, reason = module.evaluate(alias / "bundle")
         self.assertFalse(valid)
         self.assertIn("unsafe evidence directory", reason)
         self.assertTrue(any(name == "middle-alias" and code in (errno.ELOOP, errno.ENOTDIR)
                             for name, code in observed))
+        self.assertFalse(any(name == "bundle" for name, _ in observed))
 
     def test_valid_target_evidence_symlink_rejected_at_open(self):
         # Link target bytes match the signed-in-bundle checksum; only O_NOFOLLOW
