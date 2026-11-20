@@ -626,7 +626,7 @@ class EvidenceCheckerTests(unittest.TestCase):
 
     def test_cli_subprocess_raw_stdout_bytes_and_lf(self):
         expected = (b"MN001_GATE=NO_GO REVIEW_REQUIRED=YES "
-                    b"EVIDENCE_CATEGORIES=8 EVIDENCE_FORMAT=VALID\\n")
+                    b"EVIDENCE_CATEGORIES=8 EVIDENCE_FORMAT=VALID\n")
         completed = subprocess.run(
             [sys.executable, str(CHECKER), str(self.root)],
             capture_output=True, check=False, timeout=10,
@@ -634,7 +634,7 @@ class EvidenceCheckerTests(unittest.TestCase):
         self.assertEqual(completed.returncode, 0)
         self.assertEqual(completed.stdout, expected)
         self.assertEqual(completed.stderr, b"")
-        self.assertTrue(completed.stdout.endswith(b"\\n"))
+        self.assertTrue(completed.stdout.endswith(b"\n"))
         self.assertTrue(module.is_complete_format_success(
             completed.stdout.decode("ascii"), completed.returncode))
 
