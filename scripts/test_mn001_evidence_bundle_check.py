@@ -89,8 +89,6 @@ class EvidenceCheckerTests(unittest.TestCase):
     def test_wrapper_creation_failure_closes_raw_file_fd(self):
         real_open = os.open
         opened = []
-        with os.scandir(self.root):
-            pass  # Only synthetic local temporary files are used.
         dir_fd = real_open(str(self.root), os.O_RDONLY | os.O_DIRECTORY)
         try:
             def track_open(name, flags, *args, **kwargs):
@@ -118,11 +116,12 @@ class EvidenceCheckerTests(unittest.TestCase):
                 return fd
             with patch.object(module.os, "open", side_effect=track_open):
                 with self.assertRaises(ValueError):
-                    module.read_regular_at(dir_fd, "network_denial.txt", 65536)
+                    module.read_regular_at(dir_fd, ".", 65536)
         finally:
             os.close(dir_fd)
-        # The ordinary directory case is exercised separately by the
-        # existing test_directory_in_place_of_evidence_blocks test.
+        self.assertEqual(len(opened), 1)
+        with self.assertRaises(OSError):
+            os.fstat(opened[0])  # Rejected directory descriptor was released.
 
     def test_root_close_failure_never_prints_valid(self):
         root_fd = os.open(str(self.root), os.O_RDONLY | os.O_DIRECTORY)
