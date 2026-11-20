@@ -716,7 +716,7 @@ class EvidenceCheckerTests(unittest.TestCase):
             " try:\\n"
             "  mod.cli([sys.argv[2]])\\n"
             " except OSError as exc:\\n"
-            "  sys.stderr.write('CLI_FLUSH_OBSERVED: '+str(exc)+'\\\\n')\\n"
+            "  print('CLI_FLUSH_OBSERVED:', str(exc), file=sys.stderr)\\n"
             "  raise\\n"
             "finally:\\n"
             " sys.stdout=original\\n"
