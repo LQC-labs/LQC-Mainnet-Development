@@ -23,6 +23,17 @@ REQUIRED = (
 )
 SHA256 = re.compile(r"^[0-9a-f]{64}$")
 GIT_SHA = re.compile(r"^[0-9a-f]{40}$")
+# Only a COMPLETE newline-terminated record + exit status 0 is format-valid.
+# NO_GO is first and VALID is last to fail closed on truncated output.
+SUCCESS_RECORD = (
+    "MN001_GATE=NO_GO REVIEW_REQUIRED=YES EVIDENCE_CATEGORIES=8 "
+    "EVIDENCE_FORMAT=VALID\\n"
+)
+
+
+def is_complete_format_success(stdout, exit_status):
+    """Consumer contract; never accept a bare VALID marker or partial output."""
+    return exit_status == 0 and stdout == SUCCESS_RECORD
 
 def blocked(message):
     print("EVIDENCE_FORMAT=BLOCKED")
@@ -193,11 +204,10 @@ def render_verdict(result):
     valid, error = result
     if not valid:
         return blocked(error)
-    print("EVIDENCE_FORMAT=VALID")
-    print("EVIDENCE_CATEGORIES=8")
-    print("MN001_GATE=NO_GO")
-    print("REVIEW_REQUIRED=YES")
-    print("This is file-integrity evidence only; no isolation proof or execution authorization.")
+    # One complete record, no standalone VALID line. Consumers MUST verify
+    # exact content, terminating newline and process exit status 0.
+    sys.stdout.write(SUCCESS_RECORD)
+    sys.stdout.flush()
     return 0
 
 
