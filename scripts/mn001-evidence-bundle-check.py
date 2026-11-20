@@ -41,19 +41,24 @@ def unique_object_pairs(pairs):
 
 
 def read_regular_at(root_fd, name, maximum):
-    """Open by directory descriptor; reject symlinks, special files and races."""
+    """Read a regular file via dirfd, retaining FD ownership until cleanup."""
     flags = os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK | os.O_CLOEXEC
     fd = os.open(name, flags, dir_fd=root_fd)
-    with os.fdopen(fd, "rb") as stream:
-        info = os.fstat(stream.fileno())
+    try:
+        info = os.fstat(fd)
         if not stat.S_ISREG(info.st_mode):
             raise ValueError("not a regular evidence file: " + name)
         if info.st_size == 0 or info.st_size > maximum:
             raise ValueError("invalid evidence file size: " + name)
-        payload = stream.read(maximum + 1)
+        # closefd=False keeps one owner even if wrapper construction fails.
+        with os.fdopen(fd, "rb", closefd=False) as stream:
+            payload = stream.read(maximum + 1)
         if not payload or len(payload) > maximum:
             raise ValueError("evidence read exceeds size limit: " + name)
         return payload
+    finally:
+        # A Linux close error is fatal, and never retried on the same FD.
+        os.close(fd)
 
 
 def open_evidence_directory(directory):
@@ -90,58 +95,74 @@ def open_evidence_directory(directory):
         raise
 
 
+def inspect_bundle(root_fd):
+    """Inspect content with no verdict output; caller owns directory cleanup."""
+    manifest_data = read_regular_at(root_fd, "manifest.json", 65536)
+    try:
+        payload = json.loads(manifest_data.decode("utf-8"), object_pairs_hook=unique_object_pairs)
+    except (ValueError, UnicodeError):
+        return False, "invalid JSON manifest"
+    if (not isinstance(payload, dict) or type(payload.get("schema_version")) is not int
+            or payload["schema_version"] != 1):
+        return False, "unsupported evidence schema"
+    if (not isinstance(payload.get("source_sha"), str)
+            or not GIT_SHA.fullmatch(payload["source_sha"])
+            or payload["source_sha"] == "0" * 40):
+        return False, "full source commit SHA required"
+    records = payload.get("evidence")
+    if not isinstance(records, dict) or set(records) != set(REQUIRED):
+        return False, "required evidence categories must match exactly"
+    seen = set()
+    for category in REQUIRED:
+        record = records[category]
+        if not isinstance(record, dict) or set(record) != {"file", "sha256"}:
+            return False, "invalid record for " + category
+        relative, expected_hash = record["file"], record["sha256"]
+        if not isinstance(relative, str) or not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_.-]{0,127}", relative):
+            return False, "unsafe evidence filename for " + category
+        if relative in seen or relative == "manifest.json":
+            return False, "evidence filenames must be distinct from each other and manifest"
+        seen.add(relative)
+        if not isinstance(expected_hash, str) or not SHA256.fullmatch(expected_hash):
+            return False, "invalid sha256 for " + category
+        try:
+            data = read_regular_at(root_fd, relative, 8 * 1024 * 1024)
+        except (OSError, ValueError) as exc:
+            return False, "unsafe evidence for " + category + ": " + str(exc)
+        if hashlib.sha256(data).hexdigest() != expected_hash:
+            return False, "SHA-256 mismatch for " + category
+    return True, None
+
 def check(directory):
-    # Traverse every parent directory without symlinks, holding descriptors
-    # rather than resolving the same path again between checks.
+    # Final verdict must be emitted only after the root descriptor is closed.
     try:
         root_fd = open_evidence_directory(directory)
     except (OSError, ValueError) as exc:
         return blocked("unsafe evidence directory: " + str(exc))
+
+    valid, error = False, None
+    cleanup_error = None
     try:
-        manifest_data = read_regular_at(root_fd, "manifest.json", 65536)
-        try:
-            payload = json.loads(manifest_data.decode("utf-8"), object_pairs_hook=unique_object_pairs)
-        except (ValueError, UnicodeError):
-            return blocked("invalid JSON manifest")
-        if (not isinstance(payload, dict) or type(payload.get("schema_version")) is not int
-                or payload["schema_version"] != 1):
-            return blocked("unsupported evidence schema")
-        if (not isinstance(payload.get("source_sha"), str)
-                or not GIT_SHA.fullmatch(payload["source_sha"])
-                or payload["source_sha"] == "0" * 40):
-            return blocked("full source commit SHA required")
-        records = payload.get("evidence")
-        if not isinstance(records, dict) or set(records) != set(REQUIRED):
-            return blocked("required evidence categories must match exactly")
-        seen = set()
-        for category in REQUIRED:
-            record = records[category]
-            if not isinstance(record, dict) or set(record) != {"file", "sha256"}:
-                return blocked("invalid record for " + category)
-            relative, expected_hash = record["file"], record["sha256"]
-            if not isinstance(relative, str) or not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_.-]{0,127}", relative):
-                return blocked("unsafe evidence filename for " + category)
-            if relative in seen or relative == "manifest.json":
-                return blocked("evidence filenames must be distinct from each other and manifest")
-            seen.add(relative)
-            if not isinstance(expected_hash, str) or not SHA256.fullmatch(expected_hash):
-                return blocked("invalid sha256 for " + category)
-            try:
-                data = read_regular_at(root_fd, relative, 8 * 1024 * 1024)
-            except (OSError, ValueError) as exc:
-                return blocked("unsafe evidence for " + category + ": " + str(exc))
-            if hashlib.sha256(data).hexdigest() != expected_hash:
-                return blocked("SHA-256 mismatch for " + category)
-        print("EVIDENCE_FORMAT=VALID")
-        print("EVIDENCE_CATEGORIES=8")
-        print("MN001_GATE=NO_GO")
-        print("REVIEW_REQUIRED=YES")
-        print("This is file-integrity evidence only; no isolation proof or execution authorization.")
-        return 0
+        valid, error = inspect_bundle(root_fd)
     except (OSError, ValueError) as exc:
-        return blocked("cannot safely read evidence: " + str(exc))
+        error = "cannot safely read evidence: " + str(exc)
     finally:
-        os.close(root_fd)
+        try:
+            os.close(root_fd)
+        except OSError as exc:
+            cleanup_error = str(exc)
+
+    if cleanup_error is not None:
+        return blocked((error + "; " if error else "") +
+                       "evidence directory close failed: " + cleanup_error)
+    if not valid:
+        return blocked(error or "evidence validation failed")
+    print("EVIDENCE_FORMAT=VALID")
+    print("EVIDENCE_CATEGORIES=8")
+    print("MN001_GATE=NO_GO")
+    print("REVIEW_REQUIRED=YES")
+    print("This is file-integrity evidence only; no isolation proof or execution authorization.")
+    return 0
 
 if __name__ == "__main__":
     if len(sys.argv) != 2:
