@@ -27,3 +27,18 @@ python3 scripts/mn001-go-local-init-inventory.py .
 
 Read the source-specific observations in
 [MN001_GO_INIT_REVIEW_PHASE1.md](MN001_GO_INIT_REVIEW_PHASE1.md).
+
+## Static-only regression tests
+
+Run `python3 scripts/test_mn001_go_local_init_inventory.py` using Python
+standard-library-only synthetic fixtures. These tests cover local package
+traversal, alias imports, CGo text signals, missing files, symlink rejection,
+external-import classification, unsafe import paths, and documented comment
+false positives. They DO NOT run Go, candidate tests, SDK initialization,
+or prove the real repository's full dependency closure.
+
+**Important:** `observed_source_signals` values are raw regular-expression
+text matches. A commented-out `func init()` can produce `init_decl`; no
+found signal and a found signal are **both insufficient** to certify initialization
+safety. A build-tag-aware Go AST plus independent upstream code review is
+still required.
