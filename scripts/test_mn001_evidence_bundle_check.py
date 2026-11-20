@@ -2,6 +2,7 @@
 # Copyright 2026 MMXlabs & LQC LLC
 # SPDX-License-Identifier: Apache-2.0
 """Offline format-verifier unit tests only. No VM or MN-001 candidate execution."""
+import errno
 import hashlib
 from contextlib import redirect_stderr, redirect_stdout
 import io
@@ -693,6 +694,84 @@ class EvidenceCheckerTests(unittest.TestCase):
         self.assertIn(b"incomplete evidence success record", completed.stderr)
         self.assertFalse(module.is_complete_format_success(
             completed.stdout.decode("ascii"), completed.returncode))
+
+    def test_subprocess_success_flush_failure_rejects_full_record(self):
+        # Child emits the entire format-valid record but flush then raises.
+        # Parent observes REAL nonzero exit and requires full output + exit 0.
+        source = (
+            "import importlib.util, sys\\n"
+            "spec=importlib.util.spec_from_file_location('bundle', sys.argv[1])\\n"
+            "mod=importlib.util.module_from_spec(spec)\\n"
+            "spec.loader.exec_module(mod)\\n"
+            "class FailingFlush:\\n"
+            " def __init__(self): self.writes=0\\n"
+            " def write(self, value):\\n"
+            "  self.writes+=1\\n"
+            "  sys.__stdout__.write(value); sys.__stdout__.flush()\\n"
+            "  return len(value)\\n"
+            " def flush(self): raise OSError('injected child flush failure')\\n"
+            "sys.stdout=FailingFlush()\\n"
+            "sys.exit(mod.cli([sys.argv[2]]))\\n"
+        )
+        # Python code uses actual LF separators, not literal backslash+n.
+        source = source.replace("\\n", "\n")
+        completed = subprocess.run(
+            [sys.executable, "-c", source, str(CHECKER), str(self.root)],
+            capture_output=True, timeout=10, check=False,
+        )
+        expected = (b"MN001_GATE=NO_GO REVIEW_REQUIRED=YES "
+                    b"EVIDENCE_CATEGORIES=8 EVIDENCE_FORMAT=VALID\n")
+        self.assertEqual(completed.stdout, expected)
+        self.assertNotEqual(completed.returncode, 0)
+        self.assertIn(b"injected child flush failure", completed.stderr)
+        self.assertEqual(completed.stdout.count(b"EVIDENCE_FORMAT=VALID"), 1)
+        self.assertFalse(module.is_complete_format_success(
+            completed.stdout.decode("ascii"), completed.returncode))
+
+    def test_valid_manifest_symlink_rejected_with_errno(self):
+        original = self.root / "manifest.json"
+        valid_copy = self.root / "valid-manifest.json"
+        valid_copy.write_bytes(original.read_bytes())
+        original.unlink()
+        original.symlink_to(valid_copy)
+        real_open = os.open
+        observed = []
+        def recording_open(name, flags, *args, **kwargs):
+            try:
+                return real_open(name, flags, *args, **kwargs)
+            except OSError as exc:
+                observed.append((name, exc.errno))
+                raise
+        with patch.object(module.os, "open", side_effect=recording_open):
+            valid, reason = module.evaluate(self.root)
+        self.assertFalse(valid)
+        self.assertIn("manifest.json", reason)
+        self.assertIn(("manifest.json", errno.ELOOP), observed)
+
+    def test_valid_middle_directory_symlink_rejected_with_errno(self):
+        real_dir = self.root / "real-dir"
+        real_dir.mkdir()
+        import shutil
+        for entry in self.root.iterdir():
+            if entry.is_file():
+                shutil.copyfile(entry, real_dir / entry.name)
+        self.assertEqual(module.evaluate(real_dir), (True, None))
+        alias = self.root / "middle-alias"
+        alias.symlink_to(real_dir, target_is_directory=True)
+        real_open = os.open
+        observed = []
+        def recording_open(name, flags, *args, **kwargs):
+            try:
+                return real_open(name, flags, *args, **kwargs)
+            except OSError as exc:
+                observed.append((name, exc.errno))
+                raise
+        with patch.object(module.os, "open", side_effect=recording_open):
+            valid, reason = module.evaluate(alias)
+        self.assertFalse(valid)
+        self.assertIn("unsafe evidence directory", reason)
+        self.assertTrue(any(name == "middle-alias" and code in (errno.ELOOP, errno.ENOTDIR)
+                            for name, code in observed))
 
     def test_valid_target_evidence_symlink_rejected_at_open(self):
         # Link target bytes match the signed-in-bundle checksum; only O_NOFOLLOW
