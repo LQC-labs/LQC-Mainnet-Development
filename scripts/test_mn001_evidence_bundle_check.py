@@ -496,6 +496,66 @@ class EvidenceCheckerTests(unittest.TestCase):
         self.assertNotIn("EVIDENCE_FORMAT=VALID", out.data)
         self.assertEqual(out.calls, 3)  # print marker, newline, then failing gate
 
+    def test_success_is_single_complete_no_go_record(self):
+        out = io.StringIO()
+        with redirect_stdout(out):
+            result = module.cli([str(self.root)])
+        self.assertEqual(result, 0)
+        self.assertEqual(out.getvalue(), module.SUCCESS_RECORD)
+        self.assertTrue(out.getvalue().endswith("\\n"))
+        self.assertTrue(module.is_complete_format_success(out.getvalue(), result))
+        self.assertTrue(out.getvalue().startswith("MN001_GATE=NO_GO"))
+        self.assertEqual(out.getvalue().count("EVIDENCE_FORMAT=VALID"), 1)
+
+    def test_truncated_or_nonzero_success_record_is_not_accepted(self):
+        record = module.SUCCESS_RECORD
+        self.assertTrue(module.is_complete_format_success(record, 0))
+        for data, status in (
+            (record, 1), (record[:-1], 0), (record[:16], 0),
+            ("EVIDENCE_FORMAT=VALID\\n", 0), (record + "extra", 0),
+            (record.replace("MN001_GATE=NO_GO", "MN001_GATE=GO"), 0),
+        ):
+            with self.subTest(data=data, status=status):
+                self.assertFalse(module.is_complete_format_success(data, status))
+
+    def test_success_output_later_write_failure_is_not_reissued(self):
+        class PartialStream:
+            def __init__(self):
+                self.data = ""
+                self.calls = 0
+            def write(self, data):
+                self.calls += 1
+                self.data += data[:20]
+                raise OSError("injected success partial write")
+            def flush(self):
+                pass
+        stream = PartialStream()
+        with redirect_stdout(stream):
+            with self.assertRaisesRegex(OSError, "success partial write"):
+                module.cli([str(self.root)])
+        self.assertEqual(stream.calls, 1)
+        self.assertFalse(module.is_complete_format_success(stream.data, 0))
+        self.assertNotIn("EVIDENCE_FORMAT=VALID", stream.data)
+
+    def test_success_flush_failure_is_not_accepted(self):
+        class FlushFailure:
+            def __init__(self):
+                self.data = ""
+                self.calls = 0
+            def write(self, data):
+                self.calls += 1
+                self.data += data
+            def flush(self):
+                raise OSError("injected success flush failure")
+        stream = FlushFailure()
+        with redirect_stdout(stream):
+            with self.assertRaisesRegex(OSError, "success flush failure"):
+                module.cli([str(self.root)])
+        self.assertEqual(stream.calls, 1)
+        # The complete text alone is insufficient: failed flush implies nonzero exit.
+        self.assertEqual(stream.data, module.SUCCESS_RECORD)
+        self.assertFalse(module.is_complete_format_success(stream.data, 1))
+
     def test_synthetic_format_is_valid_but_never_authorized(self):
         self.assertEqual(module.check(self.root), 0)
 
