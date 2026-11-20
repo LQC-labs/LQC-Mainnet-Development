@@ -69,9 +69,13 @@ class AuditTests(unittest.TestCase):
         self.assertEqual(module.check_path(''), (False, 'EMPTY_PATH'))
 
     def test_relative_parent_traversal_rejected(self):
-        with patch.object(module, 'acceptable_directory', return_value=True):
-            self.assertEqual(module.check_path('parent/../child')[1],
-                             'PARENT_TRAVERSAL')
+        with tempfile.TemporaryDirectory() as scratch:
+            parent = Path(scratch) / 'parent'
+            parent.mkdir()
+            # The prefix must exist so the audit actually encounters '..'.
+            with patch.object(module, 'acceptable_directory', return_value=True):
+                self.assertEqual(module.check_path(parent / '..' / 'child')[1],
+                                 'PARENT_TRAVERSAL')
 
     def test_middle_symlink_component_rejected(self):
         with tempfile.TemporaryDirectory() as scratch:
