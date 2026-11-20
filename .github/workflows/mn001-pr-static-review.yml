@@ -1,0 +1,90 @@
+name: MN-001 PR static review (no Go, no VM)
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    branches:
+      - integration/mn001-offline-gate-hardening-20261119
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mn001-pr-static-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  static-review:
+    if: github.event.pull_request.head.repo.full_name == 'LQC-labs/LQC-Mainnet-Development' && github.event.pull_request.head.ref == 'fix/mn001-separate-ci-gate-review-20261119'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    env:
+      LQC_MN001_OFFLINE_TEST_APPROVED: '0'
+      LQC_RUN_NATIVE_EVM: '0'
+      LQC_RUN_EVM_CONTRACT: '0'
+      LQC_RUN_CLUSTER: '0'
+      GOTOOLCHAIN: local
+      GOWORK: 'off'
+    steps:
+      - name: Checkout review-only PR commit (read-only token)
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - name: Verify static security script syntax (no execution)
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash -n scripts/mn001-offline-regression-candidate.sh
+          bash -n scripts/mn001-approval-status.sh
+          bash -n scripts/mn001-offline-scope-contract.sh
+          bash -n scripts/mn001-scope-contract-selftest.sh
+          bash -n scripts/mn001-vm-host-readiness.sh
+          bash -n scripts/mn001-network-namespace-probe.sh
+          bash -n scripts/security-preflight-linux.sh
+      - name: Execute only synthetic Python unit tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          PYTHONDONTWRITEBYTECODE=1 python3 -m unittest -v \
+            scripts/test_mn001_evidence_bundle_check.py \
+            scripts/test_mn001_go_local_init_inventory.py \
+            scripts/test_mn001_vm_argv_policy.py
+      - name: Verify frozen candidate scope (no Go)
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash scripts/mn001-offline-scope-contract.sh
+          bash scripts/mn001-scope-contract-selftest.sh
+      - name: Verify candidate is dry-run only
+        shell: bash
+        run: |
+          set -euo pipefail
+          text="$(bash scripts/mn001-offline-regression-candidate.sh)"
+          printf '%s\n' "$text"
+          grep -Fq 'no tests executed' <<< "$text"
+      - name: Verify fail-closed status with expected rejection exit
+        shell: bash
+        run: |
+          set -euo pipefail
+          report="$(mktemp)"
+          trap 'rm -f -- "$report"' EXIT
+          set +e
+          bash scripts/mn001-approval-status.sh >"$report" 2>&1
+          status=$?
+          set -e
+          cat "$report"
+          test "$status" -eq 1
+          grep -Fxq 'MN001_GATE=NO_GO' "$report"
+          grep -Fxq 'TRANSITIVE_INIT_REVIEW=BLOCKED' "$report"
+          grep -Fxq 'MN001_CANDIDATE_TESTS=NOT_EXECUTED' "$report"
+          grep -Fxq 'MAINNET=NO_GO' "$report"
+      - name: Publish permanent NO-GO notice
+        if: ${{ always() }}
+        shell: bash
+        run: |
+          {
+            printf '%s\n' '## MN-001 PR static review only'
+            printf '%s\n' 'No Go tests, Go packages, QEMU, namespaces, isolation probes or validators executed.'
+            printf '%s\n' 'MN001_GATE=NO_GO; TRANSITIVE_INIT_REVIEW=BLOCKED; MAINNET=NO_GO.'
+            printf '%s\n' 'Green static-review is NOT isolated-runner proof, candidate authorization or merge approval.'
+          } >> "$GITHUB_STEP_SUMMARY"
