@@ -547,6 +547,7 @@ class EvidenceCheckerTests(unittest.TestCase):
             def write(self, data):
                 self.calls += 1
                 self.data += data
+                return len(data)
             def flush(self):
                 raise OSError("injected success flush failure")
         stream = FlushFailure()
@@ -589,7 +590,7 @@ class EvidenceCheckerTests(unittest.TestCase):
 
     def test_cli_subprocess_exact_output_and_actual_exit_status(self):
         expected = ("MN001_GATE=NO_GO REVIEW_REQUIRED=YES "
-                    "EVIDENCE_CATEGORIES=8 EVIDENCE_FORMAT=VALID\\n")
+                    "EVIDENCE_CATEGORIES=8 EVIDENCE_FORMAT=VALID\n")
         completed = subprocess.run(
             [sys.executable, str(CHECKER), str(self.root)],
             capture_output=True, text=True, check=False, timeout=10,
