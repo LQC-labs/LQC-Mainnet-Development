@@ -163,20 +163,23 @@ def check(directory):
     valid, error = False, None
     cleanup_error = None
     try:
-        valid, error = inspect_bundle(root_fd)
-    except (KeyboardInterrupt, SystemExit) as interruption:
-        # Preserve the exit request even when root descriptor cleanup fails.
+        try:
+            valid, error = inspect_bundle(root_fd)
+        except (OSError, ValueError) as exc:
+            error = "cannot safely read evidence: " + str(exc)
+    except BaseException as original_error:
+        # Non-standard exceptions must propagate, with no leaked root FD.
         try:
             os.close(root_fd)
         except OSError as exc:
-            interruption.add_note("evidence root cleanup failed: " + str(exc))
+            original_error.add_note("evidence root cleanup failed: " + str(exc))
         raise
-    except (OSError, ValueError) as exc:
-        error = "cannot safely read evidence: " + str(exc)
-    try:
-        os.close(root_fd)
-    except OSError as exc:
-        cleanup_error = str(exc)
+    else:
+        # Exactly one close on the ordinary success/blocked path.
+        try:
+            os.close(root_fd)
+        except OSError as exc:
+            cleanup_error = str(exc)
 
     if cleanup_error is not None:
         return blocked((error + "; " if error else "") +
