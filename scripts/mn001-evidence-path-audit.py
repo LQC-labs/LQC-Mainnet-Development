@@ -15,47 +15,80 @@ def acceptable_directory(info, expected_uid):
             and (info.st_mode & (stat.S_IWGRP | stat.S_IWOTH)) == 0)
 
 
+def close_checked(fd):
+    """Never retry close on Linux: an error may still mean FD was released."""
+    try:
+        os.close(fd)
+        return True
+    except OSError:
+        return False
+
+
 def check_path(path, expected_uid=None):
-    """Pin and inspect every directory component without following links."""
+    """Audit each absolute directory component; errors always fail closed.
+
+    Directory descriptors pin objects during this metadata-only check, but do
+    not authenticate later evidence reads, mounts, or producer identity.
+    """
     if expected_uid is None:
         expected_uid = os.getuid()
-    requested = Path(path)
-    if not str(path):
-        return False, 'EMPTY_PATH'
-    if '\x00' in str(path):
+    if not isinstance(path, (str, os.PathLike)):
         return False, 'INVALID_PATH'
-    # Relative input trusts CWD without validating its ancestor chain.
-    # Require absolute paths to inspect every component from the root.
+    raw_path = os.fspath(path)
+    if not isinstance(raw_path, str):
+        return False, 'INVALID_PATH'
+    if not raw_path:
+        return False, 'EMPTY_PATH'
+    if '\\x00' in raw_path or raw_path.startswith('//'):
+        return False, 'INVALID_PATH'
+    requested = Path(raw_path)
     if not requested.is_absolute():
         return False, 'RELATIVE_PATH_NOT_ALLOWED'
     if not requested.parts:
         return False, 'EMPTY_PATH'
+
     flags = os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW | os.O_CLOEXEC
     try:
-        fd = os.open('/' if requested.is_absolute() else '.', flags)
+        fd = os.open('/', flags)
     except OSError:
         return False, 'START_DIRECTORY_UNAVAILABLE'
+
+    outcome = (False, 'METADATA_INSPECTION_FAILED')
     try:
         if not acceptable_directory(os.fstat(fd), expected_uid):
-            return False, 'UNTRUSTED_START_DIRECTORY'
-        for part in requested.parts:
-            if part in ('/', '.'):
-                continue
-            if part == '..':
-                return False, 'PARENT_TRAVERSAL'
-            try:
-                child = os.open(part, flags, dir_fd=fd)
-            except OSError:
-                return False, 'UNSAFE_COMPONENT'
-            os.close(fd)
-            fd = child
-            if not acceptable_directory(os.fstat(fd), expected_uid):
-                return False, 'UNTRUSTED_DIRECTORY_METADATA'
-        return True, 'DIRECTORY_METADATA_CONSISTENT'
-    except OSError:
-        return False, 'METADATA_INSPECTION_FAILED'
+            outcome = (False, 'UNTRUSTED_START_DIRECTORY')
+        else:
+            for part in requested.parts:
+                if part == '/':
+                    continue
+                if part == '..':
+                    outcome = (False, 'PARENT_TRAVERSAL')
+                    break
+                # openat must receive only a relative single component.
+                if part in ('.', '') or '/' in part:
+                    outcome = (False, 'INVALID_COMPONENT')
+                    break
+                try:
+                    child = os.open(part, flags, dir_fd=fd)
+                except OSError:
+                    outcome = (False, 'UNSAFE_COMPONENT')
+                    break
+                previous_fd = fd
+                fd = child  # Transfer ownership before closing the parent.
+                if not close_checked(previous_fd):
+                    outcome = (False, 'FD_CLOSE_FAILED')
+                    break
+                if not acceptable_directory(os.fstat(fd), expected_uid):
+                    outcome = (False, 'UNTRUSTED_DIRECTORY_METADATA')
+                    break
+            else:
+                outcome = (True, 'DIRECTORY_METADATA_CONSISTENT')
+    except (OSError, ValueError):
+        outcome = (False, 'METADATA_INSPECTION_FAILED')
     finally:
-        os.close(fd)
+        if not close_checked(fd):
+            outcome = (False, 'FD_CLOSE_FAILED')
+    return outcome
 
 
 def main(argv):
