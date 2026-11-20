@@ -65,6 +65,42 @@ class AuditTests(unittest.TestCase):
                 self.assertEqual(module.check_path(child),
                                  (True, 'DIRECTORY_METADATA_CONSISTENT'))
 
+    def test_empty_path_rejected(self):
+        self.assertEqual(module.check_path(''), (False, 'EMPTY_PATH'))
+
+    def test_relative_parent_traversal_rejected(self):
+        with patch.object(module, 'acceptable_directory', return_value=True):
+            self.assertEqual(module.check_path('parent/../child')[1],
+                             'PARENT_TRAVERSAL')
+
+    def test_middle_symlink_component_rejected(self):
+        with tempfile.TemporaryDirectory() as scratch:
+            target = Path(scratch) / 'trusted'
+            (target / 'bundle').mkdir(parents=True)
+            alias = Path(scratch) / 'alias'
+            alias.symlink_to(target, target_is_directory=True)
+            # Reach the OS directory traversal, not the /tmp policy gate.
+            with patch.object(module, 'acceptable_directory', return_value=True):
+                self.assertEqual(module.check_path(alias / 'bundle')[1],
+                                 'UNSAFE_COMPONENT')
+
+    def test_group_writable_final_directory_rejected(self):
+        with tempfile.TemporaryDirectory() as scratch:
+            target = Path(scratch) / 'bundle'
+            target.mkdir(mode=0o700)
+            target.chmod(0o770)
+            original = module.acceptable_directory
+            # Accept the temporary-directory ancestors solely so the final
+            # directory's real mode is directly checked.
+            def check_final(info, uid):
+                if info.st_ino == target.stat().st_ino:
+                    return original(info, uid)
+                return True
+            with patch.object(module, 'acceptable_directory', side_effect=check_final):
+                allowed, reason = module.check_path(target)
+            self.assertFalse(allowed)
+            self.assertEqual(reason, 'UNTRUSTED_DIRECTORY_METADATA')
+
     def test_missing_path_rejected(self):
         self.assertFalse(module.check_path('/some-nonexistent-mn001-directory/part')[0])
 
