@@ -63,10 +63,11 @@ def read_regular_at(root_fd, name, maximum):
             if isinstance(processing_error, (KeyboardInterrupt, SystemExit)):
                 processing_error.add_note(
                     "evidence file cleanup failed: " + str(cleanup_error))
-                raise
-            raise OSError("evidence file processing failed: " +
-                          str(processing_error) + "; close failed: " +
-                          str(cleanup_error)) from processing_error
+            else:
+                raise OSError("evidence file processing failed: " +
+                              str(processing_error) + "; close failed: " +
+                              str(cleanup_error)) from processing_error
+        # This raise is in the outer except, NOT the cleanup except.
         raise
     else:
         # A Linux close error is fatal, and the FD must not be retried.
@@ -104,9 +105,13 @@ def open_evidence_directory(directory):
         try:
             os.close(fd)  # Close the currently owned child exactly once.
         except OSError as cleanup_error:
-            raise OSError("evidence traversal failed: " +
-                          str(original_error) + "; cleanup failed: " +
-                          str(cleanup_error)) from original_error
+            if isinstance(original_error, (KeyboardInterrupt, SystemExit)):
+                original_error.add_note(
+                    "evidence traversal cleanup failed: " + str(cleanup_error))
+            else:
+                raise OSError("evidence traversal failed: " +
+                              str(original_error) + "; cleanup failed: " +
+                              str(cleanup_error)) from original_error
         raise
 
 
@@ -159,13 +164,19 @@ def check(directory):
     cleanup_error = None
     try:
         valid, error = inspect_bundle(root_fd)
-    except (OSError, ValueError) as exc:
-        error = "cannot safely read evidence: " + str(exc)
-    finally:
+    except (KeyboardInterrupt, SystemExit) as interruption:
+        # Preserve the exit request even when root descriptor cleanup fails.
         try:
             os.close(root_fd)
         except OSError as exc:
-            cleanup_error = str(exc)
+            interruption.add_note("evidence root cleanup failed: " + str(exc))
+        raise
+    except (OSError, ValueError) as exc:
+        error = "cannot safely read evidence: " + str(exc)
+    try:
+        os.close(root_fd)
+    except OSError as exc:
+        cleanup_error = str(exc)
 
     if cleanup_error is not None:
         return blocked((error + "; " if error else "") +
