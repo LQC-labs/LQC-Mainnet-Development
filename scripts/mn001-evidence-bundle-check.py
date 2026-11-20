@@ -209,7 +209,7 @@ def render_verdict(result):
     written = sys.stdout.write(SUCCESS_RECORD)
     # Text streams report characters written. Never retry: a second write
     # could duplicate a partial verdict in the collector.
-    if written != len(SUCCESS_RECORD):
+    if type(written) is not int or written != len(SUCCESS_RECORD):
         raise OSError("incomplete evidence success record write")
     sys.stdout.flush()
     return 0
