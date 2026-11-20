@@ -28,10 +28,20 @@ Bind the following fields in one signed, canonical, versioned manifest:
 `monotonic_sequence`, `exit_status`, `evidence_digests`,
 `teardown_digest`, `signing_key_id`, `signature`.
 
-- Specify a deterministic byte encoding and reject duplicate fields, unknown
-  critical schema keys, zero/placeholder values and unsupported algorithms.
+- Define a versioned deterministic byte encoding. The **signed payload excludes
+  only the `signature` field**; the algorithm identifier, `signing_key_id`,
+  schema, purpose/domain tag and all other security-critical fields must be
+  included in the signed bytes. Reject ambiguous encodings, duplicate fields,
+  unknown critical keys, zero/placeholder values, unsupported algorithms and
+  noncanonical encodings. The exact canonicalization format is **not selected**
+  until independently reviewed.
 - Verify signatures against a **pinned, independently approved** key registry,
-  not a public key supplied inside the untrusted bundle.
+  never a public key supplied inside the untrusted bundle. Prevent algorithm
+  substitution/downgrade and key-ID confusion. Key rotation/revocation policy
+  must explicitly govern verification time and previously accepted records.
+- An authentic signature does not bind trust if host evidence is forged,
+  incomplete, or signed by an unauthorized principal. Require independent
+  host identity and explicit verifier-side scope authorization.
 - Bind the same immutable source/VM identity across manifest and host records.
   Use uniqueness and monotonic sequence checks to detect replay. Timestamps
   alone are not sufficient; protect the record against later replacement.
