@@ -74,11 +74,19 @@ def open_evidence_directory(directory):
             if component == "..":
                 raise ValueError("parent traversal not permitted in evidence path")
             next_fd = os.open(component, flags, dir_fd=fd)
-            os.close(fd)
-            fd = next_fd
+            parent_fd = fd
+            fd = next_fd  # Own the child before releasing the parent.
+            try:
+                os.close(parent_fd)
+            except OSError as exc:
+                # Linux close may already have released parent_fd; never retry.
+                raise OSError("failed to close parent evidence directory") from exc
         return fd
     except BaseException:
-        os.close(fd)
+        try:
+            os.close(fd)  # Close the currently owned child exactly once.
+        except OSError as exc:
+            raise OSError("failed to clean up evidence directory") from exc
         raise
 
 
