@@ -2,12 +2,19 @@
 # Copyright 2026 MMXlabs & LQC LLC
 # SPDX-License-Identifier: Apache-2.0
 """Offline format-verifier unit tests only. No VM or MN-001 candidate execution."""
+import errno
 import hashlib
+from contextlib import redirect_stderr, redirect_stdout
+import io
 import importlib.util
 import json
+import os
+import subprocess
+import sys
 from pathlib import Path
 import tempfile
 import unittest
+from unittest.mock import patch
 
 CHECKER = Path(__file__).resolve().with_name("mn001-evidence-bundle-check.py")
 spec = importlib.util.spec_from_file_location("mn001_evidence", CHECKER)
@@ -38,6 +45,776 @@ class EvidenceCheckerTests(unittest.TestCase):
     def save_manifest(self):
         (self.root / "manifest.json").write_text(
             json.dumps(self.payload), encoding="utf-8"
+        )
+
+    def test_parent_close_error_closes_child_without_retry(self):
+        real_close = os.close
+        seen = []
+
+        def close_then_error(fd):
+            seen.append(fd)
+            real_close(fd)
+            if len(seen) == 1:
+                raise OSError("injected parent close failure")
+
+        nested = self.root / "parent" / "evidence"
+        nested.mkdir(parents=True)
+        with patch.object(module.os, "close", side_effect=close_then_error):
+            with self.assertRaises(OSError):
+                module.open_evidence_directory(nested)
+        self.assertEqual(len(seen), 2)
+        self.assertNotEqual(seen[0], seen[1])
+
+    def test_child_open_error_closes_parent_once(self):
+        real_open, real_close = os.open, os.close
+        opened, closed = [], []
+
+        def fail_component(name, flags, *args, **kwargs):
+            if name == "missing":
+                raise OSError("injected child open failure")
+            fd = real_open(name, flags, *args, **kwargs)
+            opened.append(fd)
+            return fd
+
+        def record_close(fd):
+            closed.append(fd)
+            return real_close(fd)
+
+        with patch.object(module.os, "open", side_effect=fail_component):
+            with patch.object(module.os, "close", side_effect=record_close):
+                with self.assertRaises(OSError):
+                    module.open_evidence_directory(self.root / "missing")
+        # Linux is free to reuse descriptor numbers once a prior FD closes.
+        # Verify every successfully opened descriptor was closed once.
+        self.assertGreaterEqual(len(opened), 1)
+        self.assertEqual(closed, opened)
+
+    def test_wrapper_creation_failure_closes_raw_file_fd(self):
+        real_open = os.open
+        opened = []
+        dir_fd = real_open(str(self.root), os.O_RDONLY | os.O_DIRECTORY)
+        try:
+            def track_open(name, flags, *args, **kwargs):
+                fd = real_open(name, flags, *args, **kwargs)
+                opened.append(fd)
+                return fd
+            with patch.object(module.os, "open", side_effect=track_open):
+                with patch.object(module.os, "fdopen", side_effect=OSError("injected wrapper failure")):
+                    with self.assertRaises(OSError):
+                        module.read_regular_at(dir_fd, "manifest.json", 65536)
+            self.assertEqual(len(opened), 1)
+            with self.assertRaises(OSError):
+                os.fstat(opened[0])  # The raw file descriptor was closed.
+        finally:
+            os.close(dir_fd)
+
+    def test_directory_input_closes_raw_fd(self):
+        real_open = os.open
+        opened = []
+        dir_fd = real_open(str(self.root), os.O_RDONLY | os.O_DIRECTORY)
+        try:
+            def track_open(name, flags, *args, **kwargs):
+                fd = real_open(name, flags, *args, **kwargs)
+                opened.append(fd)
+                return fd
+            with patch.object(module.os, "open", side_effect=track_open):
+                with self.assertRaises(ValueError):
+                    module.read_regular_at(dir_fd, ".", 65536)
+        finally:
+            os.close(dir_fd)
+        self.assertEqual(len(opened), 1)
+        with self.assertRaises(OSError):
+            os.fstat(opened[0])  # Rejected directory descriptor was released.
+
+    def test_root_close_failure_never_prints_valid(self):
+        root_fd = os.open(str(self.root), os.O_RDONLY | os.O_DIRECTORY)
+        real_close = os.close
+        out, err = io.StringIO(), io.StringIO()
+        def final_close_error(fd):
+            real_close(fd)
+            if fd == root_fd:
+                raise OSError("injected root cleanup failure")
+        with patch.object(module, "open_evidence_directory", return_value=root_fd):
+            with patch.object(module.os, "close", side_effect=final_close_error):
+                with redirect_stdout(out), redirect_stderr(err):
+                    result = module.check(self.root)
+        self.assertEqual(result, 1)
+        self.assertEqual(out.getvalue().count("EVIDENCE_FORMAT=BLOCKED"), 1)
+        self.assertNotIn("EVIDENCE_FORMAT=VALID", out.getvalue())
+        self.assertIn("root cleanup failure", err.getvalue())
+
+    def test_validation_and_root_cleanup_errors_both_reported(self):
+        self.payload["schema_version"] = 2
+        self.save_manifest()
+        root_fd = os.open(str(self.root), os.O_RDONLY | os.O_DIRECTORY)
+        real_close = os.close
+        out, err = io.StringIO(), io.StringIO()
+        def final_close_error(fd):
+            real_close(fd)
+            if fd == root_fd:
+                raise OSError("injected cleanup failure")
+        with patch.object(module, "open_evidence_directory", return_value=root_fd):
+            with patch.object(module.os, "close", side_effect=final_close_error):
+                with redirect_stdout(out), redirect_stderr(err):
+                    result = module.check(self.root)
+        self.assertEqual(result, 1)
+        self.assertEqual(out.getvalue().count("EVIDENCE_FORMAT=BLOCKED"), 1)
+        self.assertNotIn("EVIDENCE_FORMAT=VALID", out.getvalue())
+        self.assertIn("unsupported evidence schema", err.getvalue())
+        self.assertIn("injected cleanup failure", err.getvalue())
+
+    def test_file_fstat_and_close_double_failure_preserves_both(self):
+        real_open, real_close, real_fstat = os.open, os.close, os.fstat
+        directory = real_open(str(self.root), os.O_RDONLY | os.O_DIRECTORY)
+        opened = []
+        try:
+            def tracked_open(name, flags, *args, **kwargs):
+                fd = real_open(name, flags, *args, **kwargs)
+                opened.append(fd)
+                return fd
+            def fail_fstat(fd):
+                if fd in opened:
+                    raise OSError("injected file fstat failure")
+                return real_fstat(fd)
+            def fail_after_close(fd):
+                real_close(fd)
+                if fd in opened:
+                    raise OSError("injected file close failure")
+            with patch.object(module.os, "open", side_effect=tracked_open):
+                with patch.object(module.os, "fstat", side_effect=fail_fstat):
+                    with patch.object(module.os, "close", side_effect=fail_after_close):
+                        with self.assertRaises(OSError) as context:
+                            module.read_regular_at(directory, "manifest.json", 65536)
+            self.assertIn("file fstat failure", str(context.exception))
+            self.assertIn("file close failure", str(context.exception))
+            self.assertEqual(len(opened), 1)
+            with self.assertRaises(OSError):
+                real_fstat(opened[0])
+        finally:
+            real_close(directory)
+
+    def test_file_read_and_close_double_failure_preserves_both(self):
+        real_close = os.close
+        directory = os.open(str(self.root), os.O_RDONLY | os.O_DIRECTORY)
+        try:
+            from unittest.mock import Mock
+            wrapper = Mock()
+            wrapper.__enter__ = Mock(return_value=wrapper)
+            wrapper.__exit__ = Mock(return_value=False)
+            wrapper.read.side_effect = OSError("injected read failure")
+            def fail_after_close(fd):
+                real_close(fd)
+                if fd != directory:
+                    raise OSError("injected read fd close failure")
+            with patch.object(module.os, "fdopen", return_value=wrapper):
+                with patch.object(module.os, "close", side_effect=fail_after_close):
+                    with self.assertRaises(OSError) as context:
+                        module.read_regular_at(directory, "manifest.json", 65536)
+            self.assertIn("read failure", str(context.exception))
+            self.assertIn("read fd close failure", str(context.exception))
+        finally:
+            real_close(directory)
+
+    def test_traversal_and_cleanup_double_failure_preserves_both(self):
+        real_open, real_close = os.open, os.close
+        tracked = []
+        def fail_component(name, flags, *args, **kwargs):
+            if name == "missing":
+                raise OSError("injected traversal failure")
+            fd = real_open(name, flags, *args, **kwargs)
+            tracked.append(fd)
+            return fd
+        def close_then_error(fd):
+            real_close(fd)
+            raise OSError("injected traversal cleanup failure")
+        with patch.object(module.os, "open", side_effect=fail_component):
+            with patch.object(module.os, "close", side_effect=close_then_error):
+                with self.assertRaises(OSError) as context:
+                    module.open_evidence_directory("missing")
+        self.assertIn("traversal failure", str(context.exception))
+        self.assertIn("cleanup failure", str(context.exception))
+        self.assertEqual(len(tracked), 1)
+
+    def test_unexpected_memory_error_releases_raw_fd(self):
+        real_open, real_close = os.open, os.close
+        directory = real_open(str(self.root), os.O_RDONLY | os.O_DIRECTORY)
+        raw_fds, closed = [], []
+        try:
+            def tracked_open(name, flags, *args, **kwargs):
+                fd = real_open(name, flags, *args, **kwargs)
+                raw_fds.append(fd)
+                return fd
+            def tracked_close(fd):
+                closed.append(fd)
+                real_close(fd)
+            with patch.object(module.os, "open", side_effect=tracked_open):
+                with patch.object(module.os, "fstat", side_effect=MemoryError("injected memory failure")):
+                    with patch.object(module.os, "close", side_effect=tracked_close):
+                        with self.assertRaisesRegex(MemoryError, "memory failure"):
+                            module.read_regular_at(directory, "manifest.json", 65536)
+            self.assertEqual(raw_fds, closed)
+            with self.assertRaises(OSError):
+                os.fstat(raw_fds[0])
+        finally:
+            real_close(directory)
+
+    def test_fdopen_and_close_double_failure_preserves_both(self):
+        real_open, real_close = os.open, os.close
+        directory = real_open(str(self.root), os.O_RDONLY | os.O_DIRECTORY)
+        raw_fds, closed = [], []
+        try:
+            def tracked_open(name, flags, *args, **kwargs):
+                fd = real_open(name, flags, *args, **kwargs)
+                raw_fds.append(fd)
+                return fd
+            def close_with_error(fd):
+                closed.append(fd)
+                real_close(fd)
+                raise OSError("injected cleanup error")
+            with patch.object(module.os, "open", side_effect=tracked_open):
+                with patch.object(module.os, "fdopen", side_effect=OSError("injected fdopen error")):
+                    with patch.object(module.os, "close", side_effect=close_with_error):
+                        with self.assertRaises(OSError) as context:
+                            module.read_regular_at(directory, "manifest.json", 65536)
+            self.assertIn("fdopen error", str(context.exception))
+            self.assertIn("cleanup error", str(context.exception))
+            self.assertEqual(raw_fds, closed)
+        finally:
+            real_close(directory)
+
+    def test_interrupt_releases_raw_fd_before_propagation(self):
+        real_open, real_close = os.open, os.close
+        directory = real_open(str(self.root), os.O_RDONLY | os.O_DIRECTORY)
+        raw_fds, closed = [], []
+        try:
+            def tracked_open(name, flags, *args, **kwargs):
+                fd = real_open(name, flags, *args, **kwargs)
+                raw_fds.append(fd)
+                return fd
+            def tracked_close(fd):
+                closed.append(fd)
+                real_close(fd)
+            with patch.object(module.os, "open", side_effect=tracked_open):
+                with patch.object(module.os, "fstat", side_effect=KeyboardInterrupt()):
+                    with patch.object(module.os, "close", side_effect=tracked_close):
+                        with self.assertRaises(KeyboardInterrupt):
+                            module.read_regular_at(directory, "manifest.json", 65536)
+            self.assertEqual(raw_fds, closed)
+        finally:
+            real_close(directory)
+
+    def test_parent_and_child_close_failures_preserve_both(self):
+        real_open, real_close = os.open, os.close
+        opens, closes = [], []
+        def tracked_open(name, flags, *args, **kwargs):
+            fd = real_open(name, flags, *args, **kwargs)
+            opens.append(fd)
+            return fd
+        def close_with_error(fd):
+            closes.append(fd)
+            real_close(fd)
+            if len(closes) == 1:
+                raise OSError("injected parent close detail")
+            raise OSError("injected child close detail")
+        with patch.object(module.os, "open", side_effect=tracked_open):
+            with patch.object(module.os, "close", side_effect=close_with_error):
+                with self.assertRaises(OSError) as context:
+                    module.open_evidence_directory(self.root)
+        self.assertIn("parent close detail", str(context.exception))
+        self.assertIn("child close detail", str(context.exception))
+        self.assertEqual(len(closes), 2)
+        self.assertEqual(opens[:2], closes)
+
+    def test_interrupt_and_file_close_failure_preserve_interrupt(self):
+        real_open, real_close = os.open, os.close
+        directory = real_open(str(self.root), os.O_RDONLY | os.O_DIRECTORY)
+        opened, closed = [], []
+        try:
+            def track_open(name, flags, *args, **kwargs):
+                fd = real_open(name, flags, *args, **kwargs)
+                opened.append(fd)
+                return fd
+            def close_then_fail(fd):
+                closed.append(fd)
+                real_close(fd)
+                raise OSError("file close diagnostic")
+            with patch.object(module.os, "open", side_effect=track_open):
+                with patch.object(module.os, "fstat", side_effect=KeyboardInterrupt("stop")):
+                    with patch.object(module.os, "close", side_effect=close_then_fail):
+                        with self.assertRaises(KeyboardInterrupt) as context:
+                            module.read_regular_at(directory, "manifest.json", 65536)
+            self.assertEqual(opened, closed)
+            self.assertIn("file close diagnostic", " ".join(context.exception.__notes__))
+        finally:
+            real_close(directory)
+
+    def test_system_exit_and_traversal_cleanup_preserve_exit_code(self):
+        real_open, real_close = os.open, os.close
+        opened, closed = [], []
+        def track_open(name, flags, *args, **kwargs):
+            fd = real_open(name, flags, *args, **kwargs)
+            opened.append(fd)
+            return fd
+        def inject_exit(name, flags, *args, **kwargs):
+            if name == "halt":
+                raise SystemExit(37)
+            return track_open(name, flags, *args, **kwargs)
+        def close_then_fail(fd):
+            closed.append(fd)
+            real_close(fd)
+            raise OSError("traversal close diagnostic")
+        with patch.object(module.os, "open", side_effect=inject_exit):
+            with patch.object(module.os, "close", side_effect=close_then_fail):
+                with self.assertRaises(SystemExit) as context:
+                    module.open_evidence_directory("halt")
+        self.assertEqual(context.exception.code, 37)
+        self.assertEqual(opened, closed)
+        self.assertIn("traversal close diagnostic", " ".join(context.exception.__notes__))
+
+    def test_interrupt_and_root_close_failure_preserve_interrupt(self):
+        real_open, real_close = os.open, os.close
+        root_fd = real_open(str(self.root), os.O_RDONLY | os.O_DIRECTORY)
+        closed = []
+        def close_then_fail(fd):
+            closed.append(fd)
+            real_close(fd)
+            raise OSError("root close diagnostic")
+        out = io.StringIO()
+        with patch.object(module, "open_evidence_directory", return_value=root_fd):
+            with patch.object(module, "inspect_bundle", side_effect=KeyboardInterrupt("stop")):
+                with patch.object(module.os, "close", side_effect=close_then_fail):
+                    with redirect_stdout(out):
+                        with self.assertRaises(KeyboardInterrupt) as context:
+                            module.check(self.root)
+        self.assertEqual(closed, [root_fd])
+        self.assertIn("root close diagnostic", " ".join(context.exception.__notes__))
+        self.assertNotIn("EVIDENCE_FORMAT=VALID", out.getvalue())
+
+    def test_memory_error_during_inspection_closes_root_once(self):
+        self._assert_root_exception_closes_once(MemoryError("memory exhausted"))
+
+    def test_recursion_error_during_inspection_closes_root_once(self):
+        self._assert_root_exception_closes_once(RecursionError("recursion limit"))
+
+    def test_memory_error_and_root_cleanup_failure_preserve_both(self):
+        self._assert_root_exception_closes_once(
+            MemoryError("memory exhausted"), cleanup_failure=True)
+
+    def _assert_root_exception_closes_once(self, fault, cleanup_failure=False):
+        real_open, real_close, real_fstat = os.open, os.close, os.fstat
+        fd = real_open(str(self.root), os.O_RDONLY | os.O_DIRECTORY)
+        close_calls = []
+        out = io.StringIO()
+
+        def instrument_close(target):
+            close_calls.append(target)
+            real_close(target)
+            if cleanup_failure:
+                raise OSError("injected root cleanup failure")
+
+        with patch.object(module, "open_evidence_directory", return_value=fd):
+            with patch.object(module, "inspect_bundle", side_effect=fault):
+                with patch.object(module.os, "close", side_effect=instrument_close):
+                    with redirect_stdout(out):
+                        with self.assertRaises(type(fault)) as observed:
+                            module.check(self.root)
+        self.assertIs(observed.exception, fault)
+        self.assertEqual(close_calls, [fd])
+        with self.assertRaises(OSError):
+            real_fstat(fd)
+        self.assertNotIn("EVIDENCE_FORMAT=VALID", out.getvalue())
+        if cleanup_failure:
+            self.assertIn("injected root cleanup failure",
+                          " ".join(observed.exception.__notes__))
+
+    def test_cli_recursion_and_root_cleanup_failure_prints_both_once(self):
+        real_open, real_close = os.open, os.close
+        root_fd = real_open(str(self.root), os.O_RDONLY | os.O_DIRECTORY)
+        closed = []
+        out, err = io.StringIO(), io.StringIO()
+        def close_then_fail(fd):
+            closed.append(fd)
+            real_close(fd)
+            raise OSError("injected root cleanup failure")
+        with patch.object(module, "open_evidence_directory", return_value=root_fd):
+            with patch.object(module, "inspect_bundle",
+                              side_effect=RecursionError("injected recursion failure")):
+                with patch.object(module.os, "close", side_effect=close_then_fail):
+                    with redirect_stdout(out), redirect_stderr(err):
+                        result = module.cli([str(self.root)])
+        self.assertEqual(result, 1)
+        self.assertEqual(closed, [root_fd])
+        self.assertEqual(out.getvalue().count("EVIDENCE_FORMAT=BLOCKED"), 1)
+        self.assertNotIn("EVIDENCE_FORMAT=VALID", out.getvalue())
+        self.assertIn("injected recursion failure", err.getvalue())
+        self.assertIn("injected root cleanup failure", err.getvalue())
+
+    def test_cli_invalid_argument_blocks_once(self):
+        out, err = io.StringIO(), io.StringIO()
+        with redirect_stdout(out), redirect_stderr(err):
+            result = module.cli([])
+        self.assertEqual(result, 1)
+        self.assertEqual(out.getvalue().count("EVIDENCE_FORMAT=BLOCKED"), 1)
+        self.assertNotIn("EVIDENCE_FORMAT=VALID", out.getvalue())
+        self.assertIn("usage:", err.getvalue())
+
+    def test_cli_stderr_failure_does_not_repeat_blocked(self):
+        self.payload["schema_version"] = 2
+        self.save_manifest()
+        out = io.StringIO()
+
+        class FailingStderr:
+            def write(self, _):
+                raise OSError("injected stderr failure")
+            def flush(self):
+                pass
+
+        with redirect_stdout(out), redirect_stderr(FailingStderr()):
+            with self.assertRaisesRegex(OSError, "stderr failure"):
+                module.cli([str(self.root)])
+        self.assertEqual(out.getvalue().count("EVIDENCE_FORMAT=BLOCKED"), 1)
+        self.assertNotIn("EVIDENCE_FORMAT=VALID", out.getvalue())
+
+    def test_cli_stdout_failure_after_first_marker_never_reissues(self):
+        self.payload["schema_version"] = 2
+        self.save_manifest()
+
+        class FailingStdout:
+            def __init__(self):
+                self.data = ""
+                self.calls = 0
+            def write(self, part):
+                self.calls += 1
+                if "MN001_GATE" in part:
+                    raise OSError("injected later stdout failure")
+                self.data += part
+            def flush(self):
+                pass
+
+        out = FailingStdout()
+        with redirect_stdout(out):
+            with self.assertRaisesRegex(OSError, "stdout failure"):
+                module.cli([str(self.root)])
+        self.assertEqual(out.data.count("EVIDENCE_FORMAT=BLOCKED"), 1)
+        self.assertNotIn("EVIDENCE_FORMAT=VALID", out.data)
+        self.assertEqual(out.calls, 3)  # print marker, newline, then failing gate
+
+    def test_success_is_single_complete_no_go_record(self):
+        out = io.StringIO()
+        with redirect_stdout(out):
+            result = module.cli([str(self.root)])
+        self.assertEqual(result, 0)
+        self.assertEqual(out.getvalue(), module.SUCCESS_RECORD)
+        self.assertTrue(out.getvalue().endswith("\n"))
+        self.assertTrue(module.is_complete_format_success(out.getvalue(), result))
+        self.assertTrue(out.getvalue().startswith("MN001_GATE=NO_GO"))
+        self.assertEqual(out.getvalue().count("EVIDENCE_FORMAT=VALID"), 1)
+
+    def test_truncated_or_nonzero_success_record_is_not_accepted(self):
+        record = module.SUCCESS_RECORD
+        self.assertTrue(module.is_complete_format_success(record, 0))
+        for data, status in (
+            (record, 1), (record[:-1], 0), (record[:16], 0),
+            ("EVIDENCE_FORMAT=VALID\\n", 0), (record + "extra", 0),
+            (record.replace("MN001_GATE=NO_GO", "MN001_GATE=GO"), 0),
+        ):
+            with self.subTest(data=data, status=status):
+                self.assertFalse(module.is_complete_format_success(data, status))
+
+    def test_success_output_later_write_failure_is_not_reissued(self):
+        class PartialStream:
+            def __init__(self):
+                self.data = ""
+                self.calls = 0
+            def write(self, data):
+                self.calls += 1
+                self.data += data[:20]
+                raise OSError("injected success partial write")
+            def flush(self):
+                pass
+        stream = PartialStream()
+        with redirect_stdout(stream):
+            with self.assertRaisesRegex(OSError, "success partial write"):
+                module.cli([str(self.root)])
+        self.assertEqual(stream.calls, 1)
+        self.assertFalse(module.is_complete_format_success(stream.data, 0))
+        self.assertNotIn("EVIDENCE_FORMAT=VALID", stream.data)
+
+    def test_success_flush_failure_is_not_accepted(self):
+        class FlushFailure:
+            def __init__(self):
+                self.data = ""
+                self.calls = 0
+            def write(self, data):
+                self.calls += 1
+                self.data += data
+                return len(data)
+            def flush(self):
+                raise OSError("injected success flush failure")
+        stream = FlushFailure()
+        with redirect_stdout(stream):
+            with self.assertRaisesRegex(OSError, "success flush failure"):
+                module.cli([str(self.root)])
+        self.assertEqual(stream.calls, 1)
+        # The complete text alone is insufficient: failed flush implies nonzero exit.
+        self.assertEqual(stream.data, module.SUCCESS_RECORD)
+        self.assertFalse(module.is_complete_format_success(stream.data, 1))
+
+    def test_success_short_write_without_exception_fails_closed(self):
+        class ShortWrite:
+            def __init__(self):
+                self.data = ""
+                self.calls = 0
+            def write(self, value):
+                self.calls += 1
+                self.data += value[:12]
+                return 12
+            def flush(self):
+                pass
+        out = ShortWrite()
+        with redirect_stdout(out):
+            with self.assertRaisesRegex(OSError, "incomplete evidence success record"):
+                module.cli([str(self.root)])
+        self.assertEqual(out.calls, 1)
+        self.assertFalse(module.is_complete_format_success(out.data, 0))
+        self.assertNotIn("EVIDENCE_FORMAT=VALID", out.data)
+
+    def test_success_write_none_without_exception_fails_closed(self):
+        class NoneWrite:
+            def write(self, value):
+                return None
+            def flush(self):
+                pass
+        with redirect_stdout(NoneWrite()):
+            with self.assertRaisesRegex(OSError, "incomplete evidence success record"):
+                module.cli([str(self.root)])
+
+    def test_success_float_write_count_equal_length_is_rejected(self):
+        class FloatWrite:
+            def __init__(self):
+                self.data = ""
+                self.calls = 0
+                self.flushed = False
+            def write(self, value):
+                self.calls += 1
+                self.data += value[:12]
+                return float(len(value))
+            def flush(self):
+                self.flushed = True
+        out = FloatWrite()
+        with redirect_stdout(out):
+            with self.assertRaisesRegex(OSError, "incomplete evidence success record"):
+                module.cli([str(self.root)])
+        self.assertEqual(out.calls, 1)
+        self.assertFalse(out.flushed)
+        self.assertFalse(module.is_complete_format_success(out.data, 0))
+        self.assertNotIn("EVIDENCE_FORMAT=VALID", out.data)
+
+    def test_success_bool_write_count_is_rejected(self):
+        class BoolWrite:
+            def __init__(self):
+                self.calls = 0
+            def write(self, value):
+                self.calls += 1
+                return True
+            def flush(self):
+                raise AssertionError("flush must not run")
+        out = BoolWrite()
+        with redirect_stdout(out):
+            with self.assertRaisesRegex(OSError, "incomplete evidence success record"):
+                module.cli([str(self.root)])
+        self.assertEqual(out.calls, 1)
+
+    def test_cli_subprocess_raw_stdout_bytes_and_lf(self):
+        expected = (b"MN001_GATE=NO_GO REVIEW_REQUIRED=YES "
+                    b"EVIDENCE_CATEGORIES=8 EVIDENCE_FORMAT=VALID\n")
+        completed = subprocess.run(
+            [sys.executable, str(CHECKER), str(self.root)],
+            capture_output=True, check=False, timeout=10,
+        )
+        self.assertEqual(completed.returncode, 0)
+        self.assertEqual(completed.stdout, expected)
+        self.assertEqual(completed.stderr, b"")
+        self.assertTrue(completed.stdout.endswith(b"\n"))
+        self.assertTrue(module.is_complete_format_success(
+            completed.stdout.decode("ascii"), completed.returncode))
+
+    def test_cli_subprocess_exact_output_and_actual_exit_status(self):
+        expected = ("MN001_GATE=NO_GO REVIEW_REQUIRED=YES "
+                    "EVIDENCE_CATEGORIES=8 EVIDENCE_FORMAT=VALID\n")
+        completed = subprocess.run(
+            [sys.executable, str(CHECKER), str(self.root)],
+            capture_output=True, text=True, check=False, timeout=10,
+        )
+        self.assertEqual(completed.returncode, 0)
+        self.assertEqual(completed.stdout, expected)
+        self.assertEqual(completed.stderr, "")
+        self.assertTrue(module.is_complete_format_success(
+            completed.stdout, completed.returncode))
+        self.assertEqual(completed.stdout.count("EVIDENCE_FORMAT=VALID"), 1)
+
+    def test_cli_subprocess_invalid_manifest_exit_and_output(self):
+        self.payload["schema_version"] = 2
+        self.save_manifest()
+        completed = subprocess.run(
+            [sys.executable, str(CHECKER), str(self.root)],
+            capture_output=True, text=True, check=False, timeout=10,
+        )
+        self.assertNotEqual(completed.returncode, 0)
+        self.assertIn("EVIDENCE_FORMAT=BLOCKED", completed.stdout)
+        self.assertNotIn("EVIDENCE_FORMAT=VALID", completed.stdout)
+        self.assertFalse(module.is_complete_format_success(
+            completed.stdout, completed.returncode))
+
+    def test_subprocess_injected_short_stdout_exits_nonzero_without_reissue(self):
+        # Only the synthetic checker runs in the child; no Go, VM or network.
+        source = (
+            "import importlib.util, sys\n"
+            "spec=importlib.util.spec_from_file_location('bundle', sys.argv[1])\n"
+            "mod=importlib.util.module_from_spec(spec)\n"
+            "spec.loader.exec_module(mod)\n"
+            "class ShortStdout:\n"
+            " def __init__(self): self.calls=0\n"
+            " def write(self, value):\n"
+            "  self.calls+=1\n"
+            "  sys.__stdout__.write(value[:12]); sys.__stdout__.flush()\n"
+            "  return 12\n"
+            " def flush(self): pass\n"
+            "sys.stdout=ShortStdout()\n"
+            "sys.exit(mod.cli([sys.argv[2]]))\n"
+        )
+        completed = subprocess.run(
+            [sys.executable, "-c", source, str(CHECKER), str(self.root)],
+            capture_output=True, timeout=10, check=False,
+        )
+        self.assertNotEqual(completed.returncode, 0)
+        self.assertEqual(completed.stdout, b"MN001_GATE=N")
+        self.assertNotIn(b"EVIDENCE_FORMAT=VALID", completed.stdout)
+        self.assertNotIn(b"EVIDENCE_FORMAT=BLOCKED", completed.stdout)
+        self.assertIn(b"incomplete evidence success record", completed.stderr)
+        self.assertFalse(module.is_complete_format_success(
+            completed.stdout.decode("ascii"), completed.returncode))
+
+    def test_subprocess_success_flush_failure_rejects_full_record(self):
+        # Child emits the entire format-valid record but flush then raises.
+        # Parent observes REAL nonzero exit and requires full output + exit 0.
+        source = (
+            "import importlib.util, sys\\n"
+            "spec=importlib.util.spec_from_file_location('bundle', sys.argv[1])\\n"
+            "mod=importlib.util.module_from_spec(spec)\\n"
+            "spec.loader.exec_module(mod)\\n"
+            "class FailingFlush:\\n"
+            " def __init__(self): self.writes=0\\n"
+            " def write(self, value):\\n"
+            "  self.writes+=1\\n"
+            "  sys.__stdout__.write(value); sys.__stdout__.flush()\\n"
+            "  return len(value)\\n"
+            " def flush(self): raise OSError('injected child flush failure')\\n"
+            "original=sys.stdout\\n"
+            "sys.stdout=FailingFlush()\\n"
+            "try:\\n"
+            " try:\\n"
+            "  mod.cli([sys.argv[2]])\\n"
+            " except OSError as exc:\\n"
+            "  print('CLI_FLUSH_OBSERVED:', str(exc), file=sys.stderr)\\n"
+            "  raise\\n"
+            "finally:\\n"
+            " sys.stdout=original\\n"
+        )
+        # Python code uses actual LF separators, not literal backslash+n.
+        source = source.replace("\\n", "\n")
+        completed = subprocess.run(
+            [sys.executable, "-c", source, str(CHECKER), str(self.root)],
+            capture_output=True, timeout=10, check=False,
+        )
+        expected = (b"MN001_GATE=NO_GO REVIEW_REQUIRED=YES "
+                    b"EVIDENCE_CATEGORIES=8 EVIDENCE_FORMAT=VALID\n")
+        self.assertEqual(completed.stdout, expected)
+        self.assertNotEqual(completed.returncode, 0)
+        self.assertIn(b"injected child flush failure", completed.stderr)
+        self.assertEqual(completed.stderr.count(b"CLI_FLUSH_OBSERVED:"), 1)
+        self.assertEqual(completed.stdout.count(b"EVIDENCE_FORMAT=VALID"), 1)
+        self.assertFalse(module.is_complete_format_success(
+            completed.stdout.decode("ascii"), completed.returncode))
+
+    def test_valid_manifest_symlink_rejected_with_errno(self):
+        original = self.root / "manifest.json"
+        valid_copy = self.root / "valid-manifest.json"
+        valid_copy.write_bytes(original.read_bytes())
+        original.unlink()
+        original.symlink_to(valid_copy)
+        real_open = os.open
+        observed = []
+        def recording_open(name, flags, *args, **kwargs):
+            try:
+                return real_open(name, flags, *args, **kwargs)
+            except OSError as exc:
+                observed.append((name, exc.errno))
+                raise
+        with patch.object(module.os, "open", side_effect=recording_open):
+            valid, reason = module.evaluate(self.root)
+        self.assertFalse(valid)
+        self.assertIn("manifest.json", reason)
+        self.assertIn(("manifest.json", errno.ELOOP), observed)
+
+    def test_valid_middle_directory_symlink_rejected_with_errno(self):
+        # A real directory component follows the symlink; this is not a
+        # final-component symlink test.
+        real_dir = self.root / "real-dir"
+        bundle = real_dir / "bundle"
+        bundle.mkdir(parents=True)
+        import shutil
+        for entry in self.root.iterdir():
+            if entry.is_file():
+                shutil.copyfile(entry, bundle / entry.name)
+        self.assertEqual(module.evaluate(bundle), (True, None))
+        alias = self.root / "middle-alias"
+        alias.symlink_to(real_dir, target_is_directory=True)
+        real_open = os.open
+        observed = []
+        def recording_open(name, flags, *args, **kwargs):
+            try:
+                return real_open(name, flags, *args, **kwargs)
+            except OSError as exc:
+                observed.append((name, exc.errno))
+                raise
+        with patch.object(module.os, "open", side_effect=recording_open):
+            valid, reason = module.evaluate(alias / "bundle")
+        self.assertFalse(valid)
+        self.assertIn("unsafe evidence directory", reason)
+        self.assertTrue(any(name == "middle-alias" and code in (errno.ELOOP, errno.ENOTDIR)
+                            for name, code in observed))
+        self.assertFalse(any(name == "bundle" for name, _ in observed))
+
+    def test_valid_target_evidence_symlink_rejected_at_open(self):
+        # Link target bytes match the signed-in-bundle checksum; only O_NOFOLLOW
+        # should cause rejection, not a later schema/hash mismatch.
+        victim = self.root / "network_denial.txt"
+        contents = victim.read_bytes()
+        matching = self.root / "matching.txt"
+        matching.write_bytes(contents)
+        victim.unlink()
+        victim.symlink_to(matching)
+        out, err = io.StringIO(), io.StringIO()
+        with redirect_stdout(out), redirect_stderr(err):
+            result = module.cli([str(self.root)])
+        self.assertEqual(result, 1)
+        self.assertIn("Too many levels of symbolic links", err.getvalue())
+        self.assertIn("network_denial.txt", err.getvalue())
+        self.assertEqual(out.getvalue().count("EVIDENCE_FORMAT=BLOCKED"), 1)
+        self.assertNotIn("EVIDENCE_FORMAT=VALID", out.getvalue())
+
+    def test_valid_bundle_root_symlink_rejected_at_open(self):
+        link = self.root.parent / (self.root.name + "-fully-valid-alias")
+        link.symlink_to(self.root, target_is_directory=True)
+        self.addCleanup(link.unlink)
+        # Control proves target is otherwise valid.
+        self.assertEqual(module.evaluate(self.root), (True, None))
+        valid, reason = module.evaluate(link)
+        self.assertFalse(valid)
+        self.assertIn("unsafe evidence directory", reason)
+        self.assertTrue(
+            "Not a directory" in reason or "Too many levels of symbolic links" in reason
         )
 
     def test_synthetic_format_is_valid_but_never_authorized(self):

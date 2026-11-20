@@ -1,0 +1,72 @@
+name: MN-001 evidence path synthetic review (NO-GO)
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    branches:
+      - fix/mn001-separate-ci-gate-review-20261119
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mn001-path-static-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  path-synthetic-review:
+    if: github.event.pull_request.head.repo.full_name == 'LQC-labs/LQC-Mainnet-Development' && github.event.pull_request.head.ref == 'fix/mn001-evidence-path-audit-20261120'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    env:
+      PYTHONDONTWRITEBYTECODE: '1'
+      LQC_MN001_OFFLINE_TEST_APPROVED: '0'
+      LQC_RUN_NATIVE_EVM: '0'
+      LQC_RUN_EVM_CONTRACT: '0'
+      LQC_RUN_CLUSTER: '0'
+      GOTOOLCHAIN: local
+      GOWORK: 'off'
+    steps:
+      - name: Checkout review-only PR source
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - name: Verify exact PR head SHA before testing
+        shell: bash
+        env:
+          EXPECTED_PR_HEAD: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          actual="$(git rev-parse HEAD)"
+          test "$actual" = "$EXPECTED_PR_HEAD"
+          printf 'MN001_VERIFIED_SOURCE_SHA=%s\n' "$actual"
+      - name: Check Python parse without candidate execution
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import ast
+          from pathlib import Path
+          for name in ('scripts/mn001-evidence-path-audit.py',
+                       'scripts/test_mn001_evidence_path_audit.py',
+                       'scripts/mn001-evidence-bundle-check.py',
+                       'scripts/test_mn001_evidence_bundle_check.py'):
+              ast.parse(Path(name).read_text(encoding='utf-8'), filename=name)
+          PY
+      - name: Run only synthetic path metadata unit cases
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m unittest -v scripts/test_mn001_evidence_path_audit.py
+          python3 -m unittest -v scripts/test_mn001_evidence_bundle_check.py
+      - name: Publish NO-GO limitation
+        if: ${{ always() }}
+        shell: bash
+        run: |
+          {
+            printf '%s\n' '## MN-001 path metadata synthetic review'
+            printf '%s\n' 'No Go, VM, namespace, network isolation, candidate tests, validators or node operations.'
+            printf '%s\n' 'Synthetic Python results are not evidence provenance or independent VM isolation.'
+            printf '%s\n' 'MN001_GATE=NO_GO; MN002=BLOCKED; MAINNET=NO_GO.'
+          } >> "$GITHUB_STEP_SUMMARY"
