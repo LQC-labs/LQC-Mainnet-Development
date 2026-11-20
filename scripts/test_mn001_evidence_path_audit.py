@@ -74,6 +74,45 @@ class AuditTests(unittest.TestCase):
             self.assertEqual(module.check_path('/bundle\x00malicious'),
                              (False, 'INVALID_PATH'))
 
+    def test_double_slash_root_rejected_before_os_open(self):
+        with patch.object(module.os, 'open', side_effect=AssertionError('opened')):
+            self.assertEqual(module.check_path('//tmp/evidence'),
+                             (False, 'INVALID_PATH'))
+
+    def test_initial_open_failure_returns_blocked(self):
+        with patch.object(module.os, 'open', side_effect=OSError('denied')):
+            self.assertEqual(module.check_path('/trusted/evidence'),
+                             (False, 'START_DIRECTORY_UNAVAILABLE'))
+
+    def test_parent_close_failure_closes_child_and_blocks(self):
+        real_close = module.os.close
+        closed = []
+        def close_then_fail_once(fd):
+            closed.append(fd)
+            real_close(fd)
+            if len(closed) == 1:
+                raise OSError('injected close error')
+        with patch.object(module, 'acceptable_directory', return_value=True):
+            with patch.object(module.os, 'close', side_effect=close_then_fail_once):
+                self.assertEqual(module.check_path('/tmp'),
+                                 (False, 'FD_CLOSE_FAILED'))
+        self.assertEqual(len(closed), 2)
+        self.assertNotEqual(closed[0], closed[1])
+
+    def test_final_close_failure_cannot_return_consistent(self):
+        real_close = module.os.close
+        def close_and_fail(fd):
+            real_close(fd)
+            raise OSError('injected close error')
+        with patch.object(module.os, 'close', side_effect=close_and_fail):
+            self.assertEqual(module.check_path('/'),
+                             (False, 'FD_CLOSE_FAILED'))
+
+    def test_fstat_failure_returns_blocked_with_cleanup(self):
+        with patch.object(module.os, 'fstat', side_effect=OSError('injected')):
+            self.assertEqual(module.check_path('/'),
+                             (False, 'METADATA_INSPECTION_FAILED'))
+
     def test_empty_path_rejected(self):
         self.assertEqual(module.check_path(''), (False, 'EMPTY_PATH'))
 
