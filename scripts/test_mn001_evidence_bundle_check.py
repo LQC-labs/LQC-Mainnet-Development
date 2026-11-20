@@ -160,6 +160,78 @@ class EvidenceCheckerTests(unittest.TestCase):
         self.assertIn("unsupported evidence schema", err.getvalue())
         self.assertIn("injected cleanup failure", err.getvalue())
 
+    def test_file_fstat_and_close_double_failure_preserves_both(self):
+        real_open, real_close, real_fstat = os.open, os.close, os.fstat
+        directory = real_open(str(self.root), os.O_RDONLY | os.O_DIRECTORY)
+        opened = []
+        try:
+            def tracked_open(name, flags, *args, **kwargs):
+                fd = real_open(name, flags, *args, **kwargs)
+                opened.append(fd)
+                return fd
+            def fail_fstat(fd):
+                if fd in opened:
+                    raise OSError("injected file fstat failure")
+                return real_fstat(fd)
+            def fail_after_close(fd):
+                real_close(fd)
+                if fd in opened:
+                    raise OSError("injected file close failure")
+            with patch.object(module.os, "open", side_effect=tracked_open):
+                with patch.object(module.os, "fstat", side_effect=fail_fstat):
+                    with patch.object(module.os, "close", side_effect=fail_after_close):
+                        with self.assertRaises(OSError) as context:
+                            module.read_regular_at(directory, "manifest.json", 65536)
+            self.assertIn("file fstat failure", str(context.exception))
+            self.assertIn("file close failure", str(context.exception))
+            self.assertEqual(len(opened), 1)
+            with self.assertRaises(OSError):
+                real_fstat(opened[0])
+        finally:
+            real_close(directory)
+
+    def test_file_read_and_close_double_failure_preserves_both(self):
+        real_close = os.close
+        directory = os.open(str(self.root), os.O_RDONLY | os.O_DIRECTORY)
+        try:
+            from unittest.mock import Mock
+            wrapper = Mock()
+            wrapper.__enter__ = Mock(return_value=wrapper)
+            wrapper.__exit__ = Mock(return_value=False)
+            wrapper.read.side_effect = OSError("injected read failure")
+            def fail_after_close(fd):
+                real_close(fd)
+                if fd != directory:
+                    raise OSError("injected read fd close failure")
+            with patch.object(module.os, "fdopen", return_value=wrapper):
+                with patch.object(module.os, "close", side_effect=fail_after_close):
+                    with self.assertRaises(OSError) as context:
+                        module.read_regular_at(directory, "manifest.json", 65536)
+            self.assertIn("read failure", str(context.exception))
+            self.assertIn("read fd close failure", str(context.exception))
+        finally:
+            real_close(directory)
+
+    def test_traversal_and_cleanup_double_failure_preserves_both(self):
+        real_open, real_close = os.open, os.close
+        tracked = []
+        def fail_component(name, flags, *args, **kwargs):
+            if name == "missing":
+                raise OSError("injected traversal failure")
+            fd = real_open(name, flags, *args, **kwargs)
+            tracked.append(fd)
+            return fd
+        def close_then_error(fd):
+            real_close(fd)
+            raise OSError("injected traversal cleanup failure")
+        with patch.object(module.os, "open", side_effect=fail_component):
+            with patch.object(module.os, "close", side_effect=close_then_error):
+                with self.assertRaises(OSError) as context:
+                    module.open_evidence_directory("missing")
+        self.assertIn("traversal failure", str(context.exception))
+        self.assertIn("cleanup failure", str(context.exception))
+        self.assertEqual(len(tracked), 1)
+
     def test_synthetic_format_is_valid_but_never_authorized(self):
         self.assertEqual(module.check(self.root), 0)
 
