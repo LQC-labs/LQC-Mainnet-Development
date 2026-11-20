@@ -39,7 +39,7 @@ def check_path(path, expected_uid=None):
         return False, 'INVALID_PATH'
     if not raw_path:
         return False, 'EMPTY_PATH'
-    if '\\x00' in raw_path or raw_path.startswith('//'):
+    if chr(0) in raw_path or raw_path.startswith('//'):
         return False, 'INVALID_PATH'
     requested = Path(raw_path)
     if not requested.is_absolute():
