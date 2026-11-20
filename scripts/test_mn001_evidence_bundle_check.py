@@ -387,6 +387,43 @@ class EvidenceCheckerTests(unittest.TestCase):
         self.assertIn("root close diagnostic", " ".join(context.exception.__notes__))
         self.assertNotIn("EVIDENCE_FORMAT=VALID", out.getvalue())
 
+    def test_memory_error_during_inspection_closes_root_once(self):
+        self._assert_root_exception_closes_once(MemoryError("memory exhausted"))
+
+    def test_recursion_error_during_inspection_closes_root_once(self):
+        self._assert_root_exception_closes_once(RecursionError("recursion limit"))
+
+    def test_memory_error_and_root_cleanup_failure_preserve_both(self):
+        self._assert_root_exception_closes_once(
+            MemoryError("memory exhausted"), cleanup_failure=True)
+
+    def _assert_root_exception_closes_once(self, fault, cleanup_failure=False):
+        real_open, real_close, real_fstat = os.open, os.close, os.fstat
+        fd = real_open(str(self.root), os.O_RDONLY | os.O_DIRECTORY)
+        close_calls = []
+        out = io.StringIO()
+
+        def instrument_close(target):
+            close_calls.append(target)
+            real_close(target)
+            if cleanup_failure:
+                raise OSError("injected root cleanup failure")
+
+        with patch.object(module, "open_evidence_directory", return_value=fd):
+            with patch.object(module, "inspect_bundle", side_effect=fault):
+                with patch.object(module.os, "close", side_effect=instrument_close):
+                    with redirect_stdout(out):
+                        with self.assertRaises(type(fault)) as observed:
+                            module.check(self.root)
+        self.assertIs(observed.exception, fault)
+        self.assertEqual(close_calls, [fd])
+        with self.assertRaises(OSError):
+            real_fstat(fd)
+        self.assertNotIn("EVIDENCE_FORMAT=VALID", out.getvalue())
+        if cleanup_failure:
+            self.assertIn("injected root cleanup failure",
+                          " ".join(observed.exception.__notes__))
+
     def test_synthetic_format_is_valid_but_never_authorized(self):
         self.assertEqual(module.check(self.root), 0)
 
