@@ -42,7 +42,7 @@ jobs:
                        'scripts/test_mn001_evidence_path_audit.py'):
               ast.parse(Path(name).read_text(encoding='utf-8'), filename=name)
           PY
-      - name: Run only 11 synthetic path metadata unit cases
+      - name: Run only synthetic path metadata unit cases
         shell: bash
         run: |
           set -euo pipefail
