@@ -65,6 +65,15 @@ class AuditTests(unittest.TestCase):
                 self.assertEqual(module.check_path(child),
                                  (True, 'DIRECTORY_METADATA_CONSISTENT'))
 
+    def test_embedded_nul_absolute_path_rejected(self):
+        self.assertEqual(module.check_path('/tmp/bundle\x00suffix'),
+                         (False, 'INVALID_PATH'))
+
+    def test_embedded_nul_rejected_before_os_open(self):
+        with patch.object(module.os, 'open', side_effect=AssertionError('opened')):
+            self.assertEqual(module.check_path('/bundle\x00malicious'),
+                             (False, 'INVALID_PATH'))
+
     def test_empty_path_rejected(self):
         self.assertEqual(module.check_path(''), (False, 'EMPTY_PATH'))
 
