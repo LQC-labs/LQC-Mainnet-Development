@@ -206,7 +206,11 @@ def render_verdict(result):
         return blocked(error)
     # One complete record, no standalone VALID line. Consumers MUST verify
     # exact content, terminating newline and process exit status 0.
-    sys.stdout.write(SUCCESS_RECORD)
+    written = sys.stdout.write(SUCCESS_RECORD)
+    # Text streams report characters written. Never retry: a second write
+    # could duplicate a partial verdict in the collector.
+    if written != len(SUCCESS_RECORD):
+        raise OSError("incomplete evidence success record write")
     sys.stdout.flush()
     return 0
 
