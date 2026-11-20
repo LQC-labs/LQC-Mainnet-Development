@@ -138,13 +138,17 @@ jobs:
           printf '%s\n' "$report"
           grep -Fxq 'RESULT=STATIC_CONTRACT_MUTATION_CHECKS_PASSED' <<< "$report"
           grep -Fxq 'MN001_GATE=NO_GO' <<< "$report"
-      - name: Check frozen QEMU plan policy (synthetic only, no VM)
+      - name: Run all MN-001 synthetic Python security unit tests (no VM or Go)
         shell: bash
         run: |
           set -euo pipefail
-          python3 -m unittest -v scripts/test_mn001_vm_argv_policy.py
-          # A matching policy is not a security approval. No QEMU command runs.
-          python3 -m py_compile scripts/mn001-vm-argv-policy.py
+          # These fixtures never import or execute LQC Go packages.
+          # Evidence-format checks, import-text inventory, and VM argv policy
+          # remain independent from candidate execution authorization.
+          PYTHONDONTWRITEBYTECODE=1 python3 -m unittest -v \
+            scripts/test_mn001_evidence_bundle_check.py \
+            scripts/test_mn001_go_local_init_inventory.py \
+            scripts/test_mn001_vm_argv_policy.py
       - name: Run reviewed existing security preflight
         shell: bash
         run: |
