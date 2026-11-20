@@ -7,7 +7,7 @@ from pathlib import Path
 import stat
 import tempfile
 import unittest
-from unittest.mock import Mock
+from unittest.mock import Mock, patch
 
 source = Path(__file__).with_name('mn001-evidence-path-audit.py')
 spec = importlib.util.spec_from_file_location('mn001_path_audit', source)
@@ -50,7 +50,20 @@ class AuditTests(unittest.TestCase):
             target.mkdir()
             alias = Path(scratch) / 'alias'
             alias.symlink_to(target, target_is_directory=True)
-            self.assertFalse(module.check_path(alias)[0])
+            # Bypass only owner/mode policy so the symlink defense is reached.
+            with patch.object(module, 'acceptable_directory', return_value=True):
+                allowed, reason = module.check_path(alias)
+            self.assertFalse(allowed)
+            self.assertEqual(reason, 'UNSAFE_COMPONENT')
+
+    def test_normal_directory_components_traverse(self):
+        with tempfile.TemporaryDirectory() as scratch:
+            child = Path(scratch) / 'real'
+            child.mkdir()
+            # Prove traversal succeeds when metadata policy alone is bypassed.
+            with patch.object(module, 'acceptable_directory', return_value=True):
+                self.assertEqual(module.check_path(child),
+                                 (True, 'DIRECTORY_METADATA_CONSISTENT'))
 
     def test_missing_path_rejected(self):
         self.assertFalse(module.check_path('/some-nonexistent-mn001-directory/part')[0])
