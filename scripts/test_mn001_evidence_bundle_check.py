@@ -8,6 +8,8 @@ import io
 import importlib.util
 import json
 import os
+import subprocess
+import sys
 from pathlib import Path
 import tempfile
 import unittest
@@ -555,6 +557,62 @@ class EvidenceCheckerTests(unittest.TestCase):
         # The complete text alone is insufficient: failed flush implies nonzero exit.
         self.assertEqual(stream.data, module.SUCCESS_RECORD)
         self.assertFalse(module.is_complete_format_success(stream.data, 1))
+
+    def test_success_short_write_without_exception_fails_closed(self):
+        class ShortWrite:
+            def __init__(self):
+                self.data = ""
+                self.calls = 0
+            def write(self, value):
+                self.calls += 1
+                self.data += value[:12]
+                return 12
+            def flush(self):
+                pass
+        out = ShortWrite()
+        with redirect_stdout(out):
+            with self.assertRaisesRegex(OSError, "incomplete evidence success record"):
+                module.cli([str(self.root)])
+        self.assertEqual(out.calls, 1)
+        self.assertFalse(module.is_complete_format_success(out.data, 0))
+        self.assertNotIn("EVIDENCE_FORMAT=VALID", out.data)
+
+    def test_success_write_none_without_exception_fails_closed(self):
+        class NoneWrite:
+            def write(self, value):
+                return None
+            def flush(self):
+                pass
+        with redirect_stdout(NoneWrite()):
+            with self.assertRaisesRegex(OSError, "incomplete evidence success record"):
+                module.cli([str(self.root)])
+
+    def test_cli_subprocess_exact_output_and_actual_exit_status(self):
+        expected = ("MN001_GATE=NO_GO REVIEW_REQUIRED=YES "
+                    "EVIDENCE_CATEGORIES=8 EVIDENCE_FORMAT=VALID\\n")
+        completed = subprocess.run(
+            [sys.executable, str(CHECKER), str(self.root)],
+            capture_output=True, text=True, check=False, timeout=10,
+        )
+        self.assertEqual(completed.returncode, 0)
+        self.assertEqual(completed.stdout, expected)
+        self.assertEqual(completed.stderr, "")
+        self.assertTrue(module.is_complete_format_success(
+            completed.stdout, completed.returncode))
+        self.assertEqual(completed.stdout.count("EVIDENCE_FORMAT=VALID"), 1)
+
+    def test_cli_subprocess_invalid_manifest_exit_and_output(self):
+        self.payload["schema_version"] = 2
+        self.save_manifest()
+        completed = subprocess.run(
+            [sys.executable, str(CHECKER), str(self.root)],
+            capture_output=True, text=True, check=False, timeout=10,
+        )
+        self.assertNotEqual(completed.returncode, 0)
+        self.assertIn("EVIDENCE_FORMAT=BLOCKED", completed.stdout)
+        self.assertNotIn("EVIDENCE_FORMAT=VALID", completed.stdout)
+        self.assertFalse(module.is_complete_format_success(
+            completed.stdout, completed.returncode))
 
     def test_synthetic_format_is_valid_but_never_authorized(self):
         self.assertEqual(module.check(self.root), 0)
