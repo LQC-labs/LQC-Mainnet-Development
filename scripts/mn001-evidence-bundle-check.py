@@ -29,6 +29,16 @@ def blocked(message):
     print("ERROR=" + message, file=sys.stderr)
     return 1
 
+def unique_object_pairs(pairs):
+    """Reject duplicate JSON keys rather than silently accepting last-wins."""
+    result = {}
+    for key, value in pairs:
+        if key in result:
+            raise ValueError("duplicate JSON key: " + key)
+        result[key] = value
+    return result
+
+
 def check(directory):
     root = Path(directory).resolve(strict=True)
     if not root.is_dir():
@@ -39,12 +49,14 @@ def check(directory):
     if manifest.stat().st_size > 65536:
         return blocked("manifest too large")
     try:
-        payload = json.loads(manifest.read_text(encoding="utf-8"))
+        payload = json.loads(manifest.read_text(encoding="utf-8"), object_pairs_hook=unique_object_pairs)
     except (ValueError, UnicodeError, OSError):
         return blocked("invalid JSON manifest")
     if not isinstance(payload, dict) or payload.get("schema_version") != 1:
         return blocked("unsupported evidence schema")
-    if not isinstance(payload.get("source_sha"), str) or not GIT_SHA.fullmatch(payload["source_sha"]):
+    if (not isinstance(payload.get("source_sha"), str)
+            or not GIT_SHA.fullmatch(payload["source_sha"])
+            or payload["source_sha"] == "0" * 40):
         return blocked("full source commit SHA required")
     records = payload.get("evidence")
     if not isinstance(records, dict) or set(records) != set(REQUIRED):
@@ -65,7 +77,10 @@ def check(directory):
         path = root / relative
         if path.is_symlink() or not path.is_file():
             return blocked("missing or symlinked evidence for " + category)
-        if path.stat().st_size > 8 * 1024 * 1024:
+        size = path.stat().st_size
+        if size == 0:
+            return blocked("empty evidence file for " + category)
+        if size > 8 * 1024 * 1024:
             return blocked("evidence file too large for " + category)
         digest = hashlib.sha256()
         with path.open("rb") as stream:
