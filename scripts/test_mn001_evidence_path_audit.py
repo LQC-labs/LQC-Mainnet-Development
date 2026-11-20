@@ -68,6 +68,15 @@ class AuditTests(unittest.TestCase):
     def test_empty_path_rejected(self):
         self.assertEqual(module.check_path(''), (False, 'EMPTY_PATH'))
 
+    def test_relative_directory_rejected_before_open(self):
+        with patch.object(module.os, 'open', side_effect=AssertionError('opened')):
+            self.assertEqual(module.check_path('private/bundle'),
+                             (False, 'RELATIVE_PATH_NOT_ALLOWED'))
+
+    def test_current_directory_alias_rejected(self):
+        self.assertEqual(module.check_path('.'),
+                         (False, 'RELATIVE_PATH_NOT_ALLOWED'))
+
     def test_relative_parent_traversal_rejected(self):
         with tempfile.TemporaryDirectory() as scratch:
             parent = Path(scratch) / 'parent'
