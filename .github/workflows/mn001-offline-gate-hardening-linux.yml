@@ -138,6 +138,13 @@ jobs:
           printf '%s\n' "$report"
           grep -Fxq 'RESULT=STATIC_CONTRACT_MUTATION_CHECKS_PASSED' <<< "$report"
           grep -Fxq 'MN001_GATE=NO_GO' <<< "$report"
+      - name: Check frozen QEMU plan policy (synthetic only, no VM)
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m unittest -v scripts/test_mn001_vm_argv_policy.py
+          # A matching policy is not a security approval. No QEMU command runs.
+          python3 -m py_compile scripts/mn001-vm-argv-policy.py
       - name: Run reviewed existing security preflight
         shell: bash
         run: |
