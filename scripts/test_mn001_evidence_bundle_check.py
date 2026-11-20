@@ -322,6 +322,71 @@ class EvidenceCheckerTests(unittest.TestCase):
         self.assertEqual(len(closes), 2)
         self.assertEqual(opens[:2], closes)
 
+    def test_interrupt_and_file_close_failure_preserve_interrupt(self):
+        real_open, real_close = os.open, os.close
+        directory = real_open(str(self.root), os.O_RDONLY | os.O_DIRECTORY)
+        opened, closed = [], []
+        try:
+            def track_open(name, flags, *args, **kwargs):
+                fd = real_open(name, flags, *args, **kwargs)
+                opened.append(fd)
+                return fd
+            def close_then_fail(fd):
+                closed.append(fd)
+                real_close(fd)
+                raise OSError("file close diagnostic")
+            with patch.object(module.os, "open", side_effect=track_open):
+                with patch.object(module.os, "fstat", side_effect=KeyboardInterrupt("stop")):
+                    with patch.object(module.os, "close", side_effect=close_then_fail):
+                        with self.assertRaises(KeyboardInterrupt) as context:
+                            module.read_regular_at(directory, "manifest.json", 65536)
+            self.assertEqual(opened, closed)
+            self.assertIn("file close diagnostic", " ".join(context.exception.__notes__))
+        finally:
+            real_close(directory)
+
+    def test_system_exit_and_traversal_cleanup_preserve_exit_code(self):
+        real_open, real_close = os.open, os.close
+        opened, closed = [], []
+        def track_open(name, flags, *args, **kwargs):
+            fd = real_open(name, flags, *args, **kwargs)
+            opened.append(fd)
+            return fd
+        def inject_exit(name, flags, *args, **kwargs):
+            if name == "halt":
+                raise SystemExit(37)
+            return track_open(name, flags, *args, **kwargs)
+        def close_then_fail(fd):
+            closed.append(fd)
+            real_close(fd)
+            raise OSError("traversal close diagnostic")
+        with patch.object(module.os, "open", side_effect=inject_exit):
+            with patch.object(module.os, "close", side_effect=close_then_fail):
+                with self.assertRaises(SystemExit) as context:
+                    module.open_evidence_directory("halt")
+        self.assertEqual(context.exception.code, 37)
+        self.assertEqual(opened, closed)
+        self.assertIn("traversal close diagnostic", " ".join(context.exception.__notes__))
+
+    def test_interrupt_and_root_close_failure_preserve_interrupt(self):
+        real_open, real_close = os.open, os.close
+        root_fd = real_open(str(self.root), os.O_RDONLY | os.O_DIRECTORY)
+        closed = []
+        def close_then_fail(fd):
+            closed.append(fd)
+            real_close(fd)
+            raise OSError("root close diagnostic")
+        out = io.StringIO()
+        with patch.object(module, "open_evidence_directory", return_value=root_fd):
+            with patch.object(module, "inspect_bundle", side_effect=KeyboardInterrupt("stop")):
+                with patch.object(module.os, "close", side_effect=close_then_fail):
+                    with redirect_stdout(out):
+                        with self.assertRaises(KeyboardInterrupt) as context:
+                            module.check(self.root)
+        self.assertEqual(closed, [root_fd])
+        self.assertIn("root close diagnostic", " ".join(context.exception.__notes__))
+        self.assertNotIn("EVIDENCE_FORMAT=VALID", out.getvalue())
+
     def test_synthetic_format_is_valid_but_never_authorized(self):
         self.assertEqual(module.check(self.root), 0)
 
