@@ -5,9 +5,11 @@
 import hashlib
 import importlib.util
 import json
+import os
 from pathlib import Path
 import tempfile
 import unittest
+from unittest.mock import patch
 
 CHECKER = Path(__file__).resolve().with_name("mn001-evidence-bundle-check.py")
 spec = importlib.util.spec_from_file_location("mn001_evidence", CHECKER)
@@ -39,6 +41,44 @@ class EvidenceCheckerTests(unittest.TestCase):
         (self.root / "manifest.json").write_text(
             json.dumps(self.payload), encoding="utf-8"
         )
+
+    def test_parent_close_error_closes_child_without_retry(self):
+        real_close = os.close
+        seen = []
+
+        def close_then_error(fd):
+            seen.append(fd)
+            real_close(fd)
+            if len(seen) == 1:
+                raise OSError("injected parent close failure")
+
+        nested = self.root / "parent" / "evidence"
+        nested.mkdir(parents=True)
+        with patch.object(module.os, "close", side_effect=close_then_error):
+            with self.assertRaises(OSError):
+                module.open_evidence_directory(nested)
+        self.assertEqual(len(seen), 2)
+        self.assertNotEqual(seen[0], seen[1])
+
+    def test_child_open_error_closes_parent_once(self):
+        real_open, real_close = os.open, os.close
+        closed = []
+
+        def fail_component(name, flags, *args, **kwargs):
+            if name == "missing":
+                raise OSError("injected child open failure")
+            return real_open(name, flags, *args, **kwargs)
+
+        def record_close(fd):
+            closed.append(fd)
+            return real_close(fd)
+
+        with patch.object(module.os, "open", side_effect=fail_component):
+            with patch.object(module.os, "close", side_effect=record_close):
+                with self.assertRaises(OSError):
+                    module.open_evidence_directory(self.root / "missing")
+        self.assertGreaterEqual(len(closed), 1)
+        self.assertEqual(len(set(closed)), len(closed))
 
     def test_synthetic_format_is_valid_but_never_authorized(self):
         self.assertEqual(module.check(self.root), 0)
