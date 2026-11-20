@@ -22,6 +22,10 @@ def check_path(path, expected_uid=None):
     requested = Path(path)
     if not str(path) or not requested.parts:
         return False, 'EMPTY_PATH'
+    # Relative input trusts CWD without validating its ancestor chain.
+    # Require absolute paths to inspect every component from the root.
+    if not requested.is_absolute():
+        return False, 'RELATIVE_PATH_NOT_ALLOWED'
     flags = os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW | os.O_CLOEXEC
     try:
         fd = os.open('/' if requested.is_absolute() else '.', flags)
