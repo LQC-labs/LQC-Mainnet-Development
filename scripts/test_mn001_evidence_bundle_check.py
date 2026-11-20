@@ -455,6 +455,47 @@ class EvidenceCheckerTests(unittest.TestCase):
         self.assertNotIn("EVIDENCE_FORMAT=VALID", out.getvalue())
         self.assertIn("usage:", err.getvalue())
 
+    def test_cli_stderr_failure_does_not_repeat_blocked(self):
+        self.payload["schema_version"] = 2
+        self.save_manifest()
+        out = io.StringIO()
+
+        class FailingStderr:
+            def write(self, _):
+                raise OSError("injected stderr failure")
+            def flush(self):
+                pass
+
+        with redirect_stdout(out), redirect_stderr(FailingStderr()):
+            with self.assertRaisesRegex(OSError, "stderr failure"):
+                module.cli([str(self.root)])
+        self.assertEqual(out.getvalue().count("EVIDENCE_FORMAT=BLOCKED"), 1)
+        self.assertNotIn("EVIDENCE_FORMAT=VALID", out.getvalue())
+
+    def test_cli_stdout_failure_after_first_marker_never_reissues(self):
+        self.payload["schema_version"] = 2
+        self.save_manifest()
+
+        class FailingStdout:
+            def __init__(self):
+                self.data = ""
+                self.calls = 0
+            def write(self, part):
+                self.calls += 1
+                if "MN001_GATE" in part:
+                    raise OSError("injected later stdout failure")
+                self.data += part
+            def flush(self):
+                pass
+
+        out = FailingStdout()
+        with redirect_stdout(out):
+            with self.assertRaisesRegex(OSError, "stdout failure"):
+                module.cli([str(self.root)])
+        self.assertEqual(out.data.count("EVIDENCE_FORMAT=BLOCKED"), 1)
+        self.assertNotIn("EVIDENCE_FORMAT=VALID", out.data)
+        self.assertEqual(out.calls, 3)  # print marker, newline, then failing gate
+
     def test_synthetic_format_is_valid_but_never_authorized(self):
         self.assertEqual(module.check(self.root), 0)
 
