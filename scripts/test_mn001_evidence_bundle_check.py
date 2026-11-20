@@ -502,7 +502,7 @@ class EvidenceCheckerTests(unittest.TestCase):
             result = module.cli([str(self.root)])
         self.assertEqual(result, 0)
         self.assertEqual(out.getvalue(), module.SUCCESS_RECORD)
-        self.assertTrue(out.getvalue().endswith("\\n"))
+        self.assertTrue(out.getvalue().endswith("\n"))
         self.assertTrue(module.is_complete_format_success(out.getvalue(), result))
         self.assertTrue(out.getvalue().startswith("MN001_GATE=NO_GO"))
         self.assertEqual(out.getvalue().count("EVIDENCE_FORMAT=VALID"), 1)
