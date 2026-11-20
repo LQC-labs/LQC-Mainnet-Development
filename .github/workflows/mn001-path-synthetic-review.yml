@@ -30,7 +30,17 @@ jobs:
       - name: Checkout review-only PR source
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
+          ref: ${{ github.event.pull_request.head.sha }}
           persist-credentials: false
+      - name: Verify exact PR head SHA before testing
+        shell: bash
+        env:
+          EXPECTED_PR_HEAD: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          actual="$(git rev-parse HEAD)"
+          test "$actual" = "$EXPECTED_PR_HEAD"
+          printf 'MN001_VERIFIED_SOURCE_SHA=%s\n' "$actual"
       - name: Check Python parse without candidate execution
         shell: bash
         run: |
