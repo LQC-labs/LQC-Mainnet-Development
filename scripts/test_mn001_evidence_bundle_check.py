@@ -85,6 +85,30 @@ class EvidenceCheckerTests(unittest.TestCase):
         self.addCleanup(link.unlink)
         self.assertEqual(module.check(link), 1)
 
+    def test_manifest_symlink_blocks(self):
+        manifest = self.root / "manifest.json"
+        manifest.unlink()
+        manifest.symlink_to(self.root / "vm_boundary.txt")
+        self.assertEqual(module.check(self.root), 1)
+
+    def test_manifest_named_as_evidence_blocks(self):
+        self.payload["evidence"]["network_denial"]["file"] = "manifest.json"
+        self.save_manifest()
+        self.assertEqual(module.check(self.root), 1)
+
+    def test_fifo_evidence_blocks_without_waiting(self):
+        import os
+        target = self.root / "network_denial.txt"
+        target.unlink()
+        os.mkfifo(target)
+        self.assertEqual(module.check(self.root), 1)
+
+    def test_directory_in_place_of_evidence_blocks(self):
+        target = self.root / "network_denial.txt"
+        target.unlink()
+        target.mkdir()
+        self.assertEqual(module.check(self.root), 1)
+
     def test_symlink_evidence_blocks(self):
         target = self.root / "network_denial.txt"
         target.unlink()

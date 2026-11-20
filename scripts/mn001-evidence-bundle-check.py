@@ -13,6 +13,7 @@ import json
 import os
 from pathlib import Path
 import re
+import stat
 import sys
 
 REQUIRED = (
@@ -39,67 +40,74 @@ def unique_object_pairs(pairs):
     return result
 
 
+def read_regular_at(root_fd, name, maximum):
+    """Open by directory descriptor; reject symlinks, special files and races."""
+    flags = os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK | os.O_CLOEXEC
+    fd = os.open(name, flags, dir_fd=root_fd)
+    with os.fdopen(fd, "rb") as stream:
+        info = os.fstat(stream.fileno())
+        if not stat.S_ISREG(info.st_mode):
+            raise ValueError("not a regular evidence file: " + name)
+        if info.st_size == 0 or info.st_size > maximum:
+            raise ValueError("invalid evidence file size: " + name)
+        payload = stream.read(maximum + 1)
+        if not payload or len(payload) > maximum:
+            raise ValueError("evidence read exceeds size limit: " + name)
+        return payload
+
+
 def check(directory):
-    # Reject a symlink at the entry boundary, not just within the bundle.
-    # resolve() would silently follow an attacker-chosen evidence root.
+    # Root entry must be a directory rather than a symlink. Use an open
+    # directory descriptor for all later file opens, not path re-resolution.
     requested = Path(directory)
     if requested.is_symlink():
         return blocked("evidence directory must not be a symlink")
-    root = requested.resolve(strict=True)
-    if not root.is_dir():
-        return blocked("evidence path must be a directory")
-    manifest = root / "manifest.json"
-    if manifest.is_symlink() or not manifest.is_file():
-        return blocked("manifest.json missing or symlink")
-    if manifest.stat().st_size > 65536:
-        return blocked("manifest too large")
+    root_fd = os.open(requested, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW | os.O_CLOEXEC)
     try:
-        payload = json.loads(manifest.read_text(encoding="utf-8"), object_pairs_hook=unique_object_pairs)
-    except (ValueError, UnicodeError, OSError):
-        return blocked("invalid JSON manifest")
-    if (not isinstance(payload, dict) or type(payload.get("schema_version")) is not int
-            or payload["schema_version"] != 1):
-        return blocked("unsupported evidence schema")
-    if (not isinstance(payload.get("source_sha"), str)
-            or not GIT_SHA.fullmatch(payload["source_sha"])
-            or payload["source_sha"] == "0" * 40):
-        return blocked("full source commit SHA required")
-    records = payload.get("evidence")
-    if not isinstance(records, dict) or set(records) != set(REQUIRED):
-        return blocked("required evidence categories must match exactly")
-    seen = set()
-    for category in REQUIRED:
-        record = records[category]
-        if not isinstance(record, dict) or set(record) != {"file", "sha256"}:
-            return blocked("invalid record for " + category)
-        relative, expected_hash = record["file"], record["sha256"]
-        if not isinstance(relative, str) or not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_.-]{0,127}", relative):
-            return blocked("unsafe evidence filename for " + category)
-        if relative in seen:
-            return blocked("evidence filenames must be distinct")
-        seen.add(relative)
-        if not isinstance(expected_hash, str) or not SHA256.fullmatch(expected_hash):
-            return blocked("invalid sha256 for " + category)
-        path = root / relative
-        if path.is_symlink() or not path.is_file():
-            return blocked("missing or symlinked evidence for " + category)
-        size = path.stat().st_size
-        if size == 0:
-            return blocked("empty evidence file for " + category)
-        if size > 8 * 1024 * 1024:
-            return blocked("evidence file too large for " + category)
-        digest = hashlib.sha256()
-        with path.open("rb") as stream:
-            for chunk in iter(lambda: stream.read(65536), b""):
-                digest.update(chunk)
-        if digest.hexdigest() != expected_hash:
-            return blocked("SHA-256 mismatch for " + category)
-    print("EVIDENCE_FORMAT=VALID")
-    print("EVIDENCE_CATEGORIES=8")
-    print("MN001_GATE=NO_GO")
-    print("REVIEW_REQUIRED=YES")
-    print("This is file-integrity evidence only; no isolation proof or execution authorization.")
-    return 0
+        manifest_data = read_regular_at(root_fd, "manifest.json", 65536)
+        try:
+            payload = json.loads(manifest_data.decode("utf-8"), object_pairs_hook=unique_object_pairs)
+        except (ValueError, UnicodeError):
+            return blocked("invalid JSON manifest")
+        if (not isinstance(payload, dict) or type(payload.get("schema_version")) is not int
+                or payload["schema_version"] != 1):
+            return blocked("unsupported evidence schema")
+        if (not isinstance(payload.get("source_sha"), str)
+                or not GIT_SHA.fullmatch(payload["source_sha"])
+                or payload["source_sha"] == "0" * 40):
+            return blocked("full source commit SHA required")
+        records = payload.get("evidence")
+        if not isinstance(records, dict) or set(records) != set(REQUIRED):
+            return blocked("required evidence categories must match exactly")
+        seen = set()
+        for category in REQUIRED:
+            record = records[category]
+            if not isinstance(record, dict) or set(record) != {"file", "sha256"}:
+                return blocked("invalid record for " + category)
+            relative, expected_hash = record["file"], record["sha256"]
+            if not isinstance(relative, str) or not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_.-]{0,127}", relative):
+                return blocked("unsafe evidence filename for " + category)
+            if relative in seen or relative == "manifest.json":
+                return blocked("evidence filenames must be distinct from each other and manifest")
+            seen.add(relative)
+            if not isinstance(expected_hash, str) or not SHA256.fullmatch(expected_hash):
+                return blocked("invalid sha256 for " + category)
+            try:
+                data = read_regular_at(root_fd, relative, 8 * 1024 * 1024)
+            except (OSError, ValueError) as exc:
+                return blocked("unsafe evidence for " + category + ": " + str(exc))
+            if hashlib.sha256(data).hexdigest() != expected_hash:
+                return blocked("SHA-256 mismatch for " + category)
+        print("EVIDENCE_FORMAT=VALID")
+        print("EVIDENCE_CATEGORIES=8")
+        print("MN001_GATE=NO_GO")
+        print("REVIEW_REQUIRED=YES")
+        print("This is file-integrity evidence only; no isolation proof or execution authorization.")
+        return 0
+    except (OSError, ValueError) as exc:
+        return blocked("cannot safely read evidence: " + str(exc))
+    finally:
+        os.close(root_fd)
 
 if __name__ == "__main__":
     if len(sys.argv) != 2:
