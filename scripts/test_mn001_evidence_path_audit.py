@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 """Synthetic noncandidate path-audit tests; no VM or network."""
 import importlib.util
+import os
 from pathlib import Path
 import stat
 import tempfile
@@ -18,6 +19,33 @@ spec.loader.exec_module(module)
 class AuditTests(unittest.TestCase):
     def info(self, mode, uid=1001):
         return Mock(st_mode=mode, st_uid=uid)
+
+    def test_real_root_metadata_chain_without_policy_mock(self):
+        # Root's real ownership and mode satisfy policy on Linux CI.
+        self.assertEqual(module.check_path('/'),
+                         (True, 'DIRECTORY_METADATA_CONSISTENT'))
+
+    def test_real_owner_mode_full_chain_without_policy_mock(self):
+        # A disposable path inside the checkout avoids /tmp's sticky world-write.
+        with tempfile.TemporaryDirectory(dir=Path.cwd()) as scratch:
+            trusted = Path(scratch) / 'parent' / 'bundle'
+            trusted.mkdir(parents=True, mode=0o700)
+            allowed, reason = module.check_path(trusted)
+            self.assertEqual((allowed, reason),
+                             (True, 'DIRECTORY_METADATA_CONSISTENT'))
+
+    def test_real_intermediate_group_write_rejected_without_mock(self):
+        with tempfile.TemporaryDirectory(dir=Path.cwd()) as scratch:
+            middle = Path(scratch) / 'writable-parent'
+            middle.mkdir(mode=0o700)
+            target = middle / 'bundle'
+            target.mkdir(mode=0o700)
+            middle.chmod(0o770)
+            try:
+                self.assertEqual(module.check_path(target),
+                                 (False, 'UNTRUSTED_DIRECTORY_METADATA'))
+            finally:
+                middle.chmod(0o700)
 
     def test_private_user_directory_acceptable(self):
         self.assertTrue(module.acceptable_directory(self.info(stat.S_IFDIR | 0o700), 1001))
