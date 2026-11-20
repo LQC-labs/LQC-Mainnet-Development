@@ -424,6 +424,37 @@ class EvidenceCheckerTests(unittest.TestCase):
             self.assertIn("injected root cleanup failure",
                           " ".join(observed.exception.__notes__))
 
+    def test_cli_recursion_and_root_cleanup_failure_prints_both_once(self):
+        real_open, real_close = os.open, os.close
+        root_fd = real_open(str(self.root), os.O_RDONLY | os.O_DIRECTORY)
+        closed = []
+        out, err = io.StringIO(), io.StringIO()
+        def close_then_fail(fd):
+            closed.append(fd)
+            real_close(fd)
+            raise OSError("injected root cleanup failure")
+        with patch.object(module, "open_evidence_directory", return_value=root_fd):
+            with patch.object(module, "inspect_bundle",
+                              side_effect=RecursionError("injected recursion failure")):
+                with patch.object(module.os, "close", side_effect=close_then_fail):
+                    with redirect_stdout(out), redirect_stderr(err):
+                        result = module.cli([str(self.root)])
+        self.assertEqual(result, 1)
+        self.assertEqual(closed, [root_fd])
+        self.assertEqual(out.getvalue().count("EVIDENCE_FORMAT=BLOCKED"), 1)
+        self.assertNotIn("EVIDENCE_FORMAT=VALID", out.getvalue())
+        self.assertIn("injected recursion failure", err.getvalue())
+        self.assertIn("injected root cleanup failure", err.getvalue())
+
+    def test_cli_invalid_argument_blocks_once(self):
+        out, err = io.StringIO(), io.StringIO()
+        with redirect_stdout(out), redirect_stderr(err):
+            result = module.cli([])
+        self.assertEqual(result, 1)
+        self.assertEqual(out.getvalue().count("EVIDENCE_FORMAT=BLOCKED"), 1)
+        self.assertNotIn("EVIDENCE_FORMAT=VALID", out.getvalue())
+        self.assertIn("usage:", err.getvalue())
+
     def test_synthetic_format_is_valid_but_never_authorized(self):
         self.assertEqual(module.check(self.root), 0)
 
